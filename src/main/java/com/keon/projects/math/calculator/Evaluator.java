@@ -42,11 +42,11 @@ class Evaluator {
         final double res = calculate(objs);
         return new IVPair<>(idx, res);
     }
-    
+
     private static double calculate(final List<Object> args) {
         Object arg0;
-        if((arg0 = args.get(0)) instanceof Character) {
-            if(((char)arg0) == Operator.PLUS || ((char)arg0) == Operator.MINUS) {
+        if ((arg0 = args.get(0)) instanceof Character) {
+            if (((char) arg0) == Operator.PLUS || ((char) arg0) == Operator.MINUS) {
                 args.add(0, 0D);
             } else {
                 throw new RuntimeException("Bad init arg: " + args);
@@ -93,11 +93,11 @@ class Evaluator {
                 break;
             }
         }
-        if(function == null) {
+        if (function == null) {
             return new IVPair<>(0, null);
         }
         final String expr = getExpression(s.substring(idx));
-        if(expr == null) {
+        if (expr == null) {
             throw new MalformedFunctionException("No () provided to " + function);
         }
         final double[] args = evalArgs(expr);
@@ -108,7 +108,7 @@ class Evaluator {
 
     private static IVPair<Double> evalExpression(final String s) {
         final String expr = getExpression(s);
-        if(expr == null) {
+        if (expr == null) {
             return new IVPair<>(0, null);
         }
         final IVPair<Double> eval = eval(expr);
@@ -124,7 +124,7 @@ class Evaluator {
         }
         return new IVPair<>(0, null);
     }
-    
+
     /**
      * Expected format: (...)
      */
@@ -135,41 +135,69 @@ class Evaluator {
         final Stack<Character> parastack = new Stack<>();
         parastack.add('(');
         int idx = 1;
-        for(; idx < s.length(); ++idx) {
+        for (; idx < s.length(); ++idx) {
             final char c = s.charAt(idx);
-            if(c == '(') {
+            if (c == '(') {
                 parastack.push(c);
-            } else if(c == ')') {
+            } else if (c == ')') {
                 parastack.pop();
-                if(parastack.empty()) {
+                if (parastack.empty()) {
                     break;
                 }
             }
         }
-        if(!parastack.empty()) {
+        if (!parastack.empty()) {
             throw new UnbalancedParanthesisException("Unbalanced paranthesis found near " + s);
         }
         final String expr = s.substring(1, idx);
         return expr;
     }
-    
+
     private static double[] evalArgs(final String args) {
+        String argsIter = args;
         final List<Double> arglist = new ArrayList<>();
-        int prevComma = 0;
-        for(int i = 0; i < args.length(); ) {
-            int comma = args.indexOf(',', i);
-            comma = comma == -1 ? args.length() : comma + 1;
-            try {
-                final double x = eval(args.substring(prevComma, comma)).val;
-                arglist.add(x);
-                prevComma = comma;
-            } catch (final UnbalancedParanthesisException e) { //TODO make this smarter
-                //It was a 'bad comma'
-                //System.err.println(e.getMessage()); //Debug
+        while (true) {
+            int nextArgIdx = getNextArgIndex(argsIter);
+            if (nextArgIdx == -1) {
+                break;
             }
-            i = comma;
+            final String thisArg = argsIter.substring(0, nextArgIdx);
+            final double x = eval(thisArg).val;
+            arglist.add(x);
+            if (nextArgIdx == argsIter.length()) {
+                break;
+            }
+            argsIter = argsIter.substring(nextArgIdx + 1);
         }
         return arglist.stream().mapToDouble(d -> d).toArray();
+    }
+
+    /**
+     * expects format: a OR a,b OR a,b,c etc. returns the next appropriate comma
+     */
+    private static int getNextArgIndex(final String args) {
+        if (args.isEmpty()) {
+            return -1;
+        }
+        if (args.charAt(0) == ',') {
+            throw new RuntimeException("Saw ,, near " + args);
+        }
+        final Stack<Character> parastack = new Stack<>();
+        int idx = 0;
+        for (; idx < args.length(); ++idx) {
+            final char c = args.charAt(idx);
+            if (c == '(') {
+                parastack.push(c);
+            } else if (c == ')') {
+                parastack.pop();
+            } else if (c == ',' && parastack.empty()) {
+                break;
+            }
+        }
+        if (!parastack.empty()) {
+            throw new UnbalancedParanthesisException("Unbalanced paranthesis found in " + args);
+        }
+        return idx;
     }
 
     static class IVPair<T> {
