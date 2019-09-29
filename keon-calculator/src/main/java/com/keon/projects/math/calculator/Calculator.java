@@ -12,7 +12,7 @@ public class Calculator {
     }
 
     public static double eval(final String exp) {
-        return Evaluator.eval(exp.replace(" ", "")).val;
+        return Evaluator.eval(preprocess(exp)).val;
     }
 
     static double calculate(Object[] objs) {
@@ -22,6 +22,10 @@ public class Calculator {
         if (objs.length == 1)
             return x0;
         return new Calculator(objs).calculate0(x0, 2, objs.length);
+    }
+    
+    private static String preprocess(String exp) {
+        return Constants.evalConstants(exp.replace(" ", ""));
     }
 
     // k0 should be on a number

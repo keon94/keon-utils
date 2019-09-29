@@ -4,6 +4,7 @@ import static com.keon.projects.math.calculator.Calculator.FNS;
 import static com.keon.projects.math.calculator.Calculator.OPS;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Stack;
 
@@ -19,27 +20,31 @@ class Evaluator {
      * @return
      */
     static IVPair<Double> eval(final String exp) {
-        final List<Object> objs = new ArrayList<>(); // chars or doubles
+        final List<Object> args = new ArrayList<>(); // chars or doubles
         int idx = 0;
         while (idx < exp.length()) {
             IVPair<?> p;
             if ((p = evalOperator(exp.substring(idx))).val != null) {
                 idx += p.idx;
-                objs.add(p.val);
+                args.add(p.val);
             } else if ((p = evalNumber(exp.substring(idx))).val != null) {
                 idx += p.idx;
-                objs.add(p.val);
+                args.add(p.val);
             } else if ((p = evalExpression(exp.substring(idx))).val != null) {
                 idx += p.idx;
-                objs.add(p.val);
-            } else if ((p = evalFunction(exp.substring(idx))).val != null) {
+                args.add(p.val);
+            } else { // Must be a function
+                p = evalFunction(exp.substring(idx));
                 idx += p.idx;
-                objs.add(p.val);
-            } else {
-                idx++;
+                args.add(p.val);
             }
         }
-        final double res = calculate(objs);
+        final double res;
+        try {
+            res = calculate(args);
+        } catch (final ClassCastException e) {
+            throw new MisplacedOperatorException("Bad operator placement near: " + exp, e);
+        }
         return new IVPair<>(idx, res);
     }
 
@@ -87,14 +92,14 @@ class Evaluator {
         int idx = 0;
         String function = null;
         for (int i = 0; i < FNS.length; ++i) {
-            if (s.startsWith(FNS[i])) {
+            if (s.startsWith(FNS[i] + '(')) {
                 idx += FNS[i].length();
                 function = FNS[i];
                 break;
             }
         }
         if (function == null) {
-            return new IVPair<>(0, null);
+            throw new UnsupportedOperationException("Unrecognized function near: " + s);
         }
         final String expr = getExpression(s.substring(idx));
         if (expr == null) {
@@ -102,7 +107,12 @@ class Evaluator {
         }
         final double[] args = evalArgs(expr);
         idx += (expr.length() + 2);
-        final double res = Function.get(function).apply(args);
+        final double res;
+        try {
+            res = Function.get(function).apply(args);
+        } catch (final ArgumentCountException e) {
+            throw new ArgumentCountException("Incorrect number of args passed into '" + function + "' near: " + s, e);
+        }
         return new IVPair<>(idx, res);
     }
 
@@ -155,7 +165,7 @@ class Evaluator {
 
     private static double[] evalArgs(final String args) {
         String argsIter = args;
-        final List<Double> arglist = new ArrayList<>();
+        final LinkedList<Double> arglist = new LinkedList<>();
         while (true) {
             int nextArgIdx = getNextArgIndex(argsIter);
             if (nextArgIdx == -1) {
@@ -163,7 +173,7 @@ class Evaluator {
             }
             final String thisArg = argsIter.substring(0, nextArgIdx);
             final double x = eval(thisArg).val;
-            arglist.add(x);
+            arglist.addLast(x);
             if (nextArgIdx == argsIter.length()) {
                 break;
             }

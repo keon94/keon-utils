@@ -54,12 +54,23 @@ class Ifunction {
         assert (expectedArgCount >= 0);
         if (vararg) {
             if (args.length < expectedArgCount) {
-                throw new RuntimeException(
+                throw new ArgumentCountException(
                         "expected minimum of: " + expectedArgCount + ". Got " + args.length + " args");
             }
         } else if (args.length != expectedArgCount) {
-            throw new RuntimeException("expected: " + expectedArgCount + ". Got " + args.length + " args");
+            throw new ArgumentCountException("expected: " + expectedArgCount + ". Got " + args.length + " args");
         }
         return f.apply(args);
     }
+}
+
+class Constants {
+    
+    static final String PI = "'pi'";
+    static final String E = "'e'";
+    
+    static String evalConstants(final String exp) {
+        return exp.replace(PI, Double.toString(Math.PI)).replace(E, Double.toString(Math.E));
+    }
+
 }
