@@ -49,24 +49,54 @@ class Evaluator {
     }
 
     private static double calculate(final List<Object> args) {
-        Object arg0;
-        if ((arg0 = args.get(0)) instanceof Character) {
-            if (((char) arg0) == Operator.PLUS || ((char) arg0) == Operator.MINUS) {
+        final Object arg0 = args.get(0);
+        if ((arg0 instanceof String)) {
+            if (((String) arg0).equals(Operator.PLUS) || ((String) arg0).equals(Operator.MINUS)) {
                 args.add(0, 0D);
             } else {
                 throw new RuntimeException("Bad init arg: " + args);
             }
         }
+        unifyConsecutiveSigns(args);
         return Calculator.calculate(args.toArray());
+    }
+
+    private static void unifyConsecutiveSigns(final List<Object> args) {
+        int i = 0;
+        String prevSign = null;
+        while (i < args.size()) {
+            var arg = args.get(i);
+            if (arg instanceof String) {
+                if (arg.equals(Operator.MINUS) || arg.equals(Operator.PLUS)) {
+                    if (prevSign == null) {
+                        prevSign = (String) arg;
+                    } else {
+                        if (arg.equals(Operator.MINUS)) {
+                            prevSign = negate(prevSign);
+                            args.set(i - 1, prevSign);
+                        }
+                        args.remove(i);
+                        i--;
+                    }
+                }
+            } else {
+                prevSign = null;
+            }
+            i++;
+        }
+    }
+
+    private static String negate(final String sign) {
+        return sign.equals(Operator.PLUS) ? Operator.MINUS : Operator.PLUS;
     }
 
     private static IVPair<Double> evalNumber(final String s) {
         int idx = 0;
         int sign = 1;
         if (!Character.isDigit(s.charAt(0))) {
-            if (s.charAt(0) == Operator.MINUS) {
+            if (s.startsWith(Operator.MINUS)) {
                 sign = -1;
-            } else if (s.charAt(0) != Operator.PLUS) {
+            } else if (!s.startsWith(Operator.PLUS)) {
                 return new IVPair<>(0, null);
             }
             idx = 1;
@@ -125,12 +155,17 @@ class Evaluator {
         return new IVPair<Double>(eval.idx + 2, eval.val);
     }
 
-    private static IVPair<Character> evalOperator(final String s) {
-        char c = s.charAt(0);
-        for (int i = 0; i < OPS.length; ++i) {
-            if (c == OPS[i]) {
-                return new IVPair<>(1, c);
+    private static IVPair<String> evalOperator(final String s) {
+        int matchedLength = 0;
+        String matchedOp = null;
+        for (final String op : OPS) {
+            if (s.startsWith(op) && op.length() > matchedLength) {
+                matchedLength = op.length();
+                matchedOp = op;
             }
+        }
+        if (matchedOp != null) {
+            return new IVPair<>(matchedOp.length(), matchedOp);
         }
         return new IVPair<>(0, null);
     }

@@ -11,5 +11,15 @@ class ExtendedMath {
         }
         return total/args.length;
     }
+   
 
+    public static double root(double a, double b) {
+        if(a < 0) {
+            if(b%2 == 0)
+                return Double.NaN;
+            return -1 * Math.pow(-a, 1/b);
+        }
+        return Math.pow(a, 1/b);
+        
+    }
 }

@@ -2,7 +2,7 @@ package com.keon.projects.math.calculator;
 
 public class Calculator {
 
-    static final char[] OPS = Operator.getOps();
+    static final String[] OPS = Operator.getOps();
     static final String[] FNS = Function.getFunctions();
 
     private final Object[] args;
@@ -31,12 +31,12 @@ public class Calculator {
     // k0 should be on a number
     private double calculate0(double v, final int k0, final int kf) {
         for (int k = k0; k < kf;) {
-            final Operator op1 = new Operator((char) args[k - 1]);
+            final Operator op1 = new Operator((String) args[k - 1]);
             double x = (double) args[k];
             if (k + 1 < kf) {
-                final Operator op2 = new Operator((char) args[k + 1]);
+                final Operator op2 = new Operator((String) args[k + 1]);
                 if (op2.isSuperiorTo(op1)) {
-                    int kff = getNextCompatibleOccurrenceOf(k + 1, op1);
+                    int kff = getNextCompatibleOccurrenceOf(k + 1, op1); //e.g for + it will be + or -
                     double y = calculate0(x, k + 2, kff);
                     v = op1.apply(v, y);
                     k = kff + 1;
@@ -54,7 +54,7 @@ public class Calculator {
 
     private int getNextCompatibleOccurrenceOf(final int k0, final Operator op) {
         for (int k = k0; k < args.length; k += 2) {
-            if (op.isInSameClassAs(new Operator((char) args[k]))) {
+            if (op.isInSameClassAs(new Operator((String) args[k]))) {
                 return k;
             }
         }
