@@ -1,4 +1,4 @@
-package com.keon.projects;
+package com.keon.projects.calculator;
 
 public interface IMain {
     

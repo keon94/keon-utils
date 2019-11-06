@@ -1,4 +1,4 @@
-package com.keon.projects.math.calculator;
+package com.keon.projects.calculator.logic;
 
 class UnbalancedParanthesisException extends RuntimeException {
 
@@ -41,6 +41,19 @@ class ArgumentCountException extends RuntimeException {
     }
     
     ArgumentCountException(final String msg, final Throwable t) {
+        super(msg, t);
+    }
+}
+
+class CyclicEquationsException extends RuntimeException {
+    
+    private static final long serialVersionUID = 1L;
+
+    CyclicEquationsException(final String msg) {
+        super(msg);
+    }
+    
+    CyclicEquationsException(final String msg, final Throwable t) {
         super(msg, t);
     }
 }

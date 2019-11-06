@@ -1,8 +1,8 @@
-package com.keon.projects;
+package com.keon.projects.calculator;
 
+import com.keon.projects.calculator.logic.VariableCalculator;
+import com.keon.projects.calculator.logic.VariableCalculator.Input;
 import com.keon.projects.console.ConsoleInputManager;
-import com.keon.projects.math.calculator.VariableCalculator;
-import com.keon.projects.math.calculator.VariableCalculator.Input;
 
 public class ConsoleMain implements IMain {
 

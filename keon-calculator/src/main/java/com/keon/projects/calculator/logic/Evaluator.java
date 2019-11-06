@@ -1,7 +1,7 @@
-package com.keon.projects.math.calculator;
+package com.keon.projects.calculator.logic;
 
-import static com.keon.projects.math.calculator.Calculator.FNS;
-import static com.keon.projects.math.calculator.Calculator.OPS;
+import static com.keon.projects.calculator.logic.Calculator.FNS;
+import static com.keon.projects.calculator.logic.Calculator.OPS;
 
 import java.util.ArrayList;
 import java.util.LinkedList;

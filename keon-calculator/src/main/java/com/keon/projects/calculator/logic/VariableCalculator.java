@@ -1,4 +1,4 @@
-package com.keon.projects.math.calculator;
+package com.keon.projects.calculator.logic;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,6 +12,8 @@ import java.util.regex.Pattern;
 /**
  * A calculator that let's you define variables and perform algebra with them.
  * The variable definitions must be noncyclic - this does not solve equations.
+ * E.g. x=y+2 ; y = z^2 ; z=2; -> y=4; x=6
+ * 
  * @author Keon Amini
  *
  */
@@ -40,6 +42,8 @@ public class VariableCalculator {
     }
 
     public double eval(final String expr) {
+        if(expr.trim().isEmpty())
+            return 0;
         return Calculator.eval(evalVariables(expr));
     }
 
@@ -87,7 +91,7 @@ public class VariableCalculator {
     }
 
     private void validateExpressions() {
-
+        //
     }
 
     public static class Input {

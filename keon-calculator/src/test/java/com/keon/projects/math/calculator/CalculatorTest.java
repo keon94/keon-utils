@@ -1,6 +1,6 @@
 package com.keon.projects.math.calculator;
 
-import static com.keon.projects.math.calculator.Calculator.calculate;
+import static com.keon.projects.calculator.logic.Calculator.calculate;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package com.keon.projects.math.calculator;
+package com.keon.projects.calculator.logic;
 
 import java.util.Comparator;
 import java.util.HashMap;

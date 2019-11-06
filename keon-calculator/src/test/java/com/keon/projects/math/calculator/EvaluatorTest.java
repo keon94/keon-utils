@@ -1,8 +1,9 @@
 package com.keon.projects.math.calculator;
 
 import org.junit.jupiter.api.Test;
+
+import static com.keon.projects.calculator.logic.Calculator.eval;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static com.keon.projects.math.calculator.Calculator.eval;
 
 public class EvaluatorTest {
 

@@ -1,11 +1,14 @@
-package com.keon.projects.math.calculator;
+package com.keon.projects.calculator.logic;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.ToDoubleFunction;
 
 class Function {
 
     private static final Map<String, Ifunction> F_MAP = new HashMap<>();
+    
+    private Function() {}
 
     static {
         F_MAP.put("sin", Ifunction.constarg(1, x -> Math.sin(x[0])));
@@ -14,6 +17,7 @@ class Function {
         F_MAP.put("exp", Ifunction.constarg(1, x -> Math.exp(x[0])));
         F_MAP.put("ln", Ifunction.constarg(1, x -> Math.log(x[0])));
         F_MAP.put("avg", Ifunction.vararg(1, ExtendedMath::avg));
+        F_MAP.put("sqrt", Ifunction.constarg(1, x -> Math.sqrt(x[0])));
     }
 
     public static String[] getFunctions() {
@@ -33,20 +37,20 @@ class Ifunction {
 
     private final boolean vararg;
     private final int expectedArgCount;
-    private final java.util.function.Function<double[], Double> f;
+    private final ToDoubleFunction<double[]> f;
 
     private Ifunction(final boolean vararg, final int expectedArgCount,
-            java.util.function.Function<double[], Double> f) {
+            ToDoubleFunction<double[]> f) {
         this.expectedArgCount = expectedArgCount;
         this.f = f;
         this.vararg = vararg;
     }
 
-    static Ifunction constarg(final int expectedArgCount, java.util.function.Function<double[], Double> f) {
+    static Ifunction constarg(final int expectedArgCount, final ToDoubleFunction<double[]> f) {
         return new Ifunction(false, expectedArgCount, f);
     }
 
-    static Ifunction vararg(final int expectedArgCount, java.util.function.Function<double[], Double> f) {
+    static Ifunction vararg(final int expectedArgCount, final ToDoubleFunction<double[]> f) {
         return new Ifunction(true, expectedArgCount, f);
     }
 
@@ -60,11 +64,13 @@ class Ifunction {
         } else if (args.length != expectedArgCount) {
             throw new ArgumentCountException("expected: " + expectedArgCount + ". Got " + args.length + " args");
         }
-        return f.apply(args);
+        return f.applyAsDouble(args);
     }
 }
 
 class Constants {
+    
+    private Constants() {}
     
     static final String PI = "'pi'";
     static final String E = "'e'";
