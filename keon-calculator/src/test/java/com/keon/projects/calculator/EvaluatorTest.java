@@ -1,4 +1,4 @@
-package com.keon.projects.math.calculator;
+package com.keon.projects.calculator;
 
 import org.junit.jupiter.api.Test;
 

@@ -53,11 +53,11 @@ class GridView {
             button.setMinWidth(gb.getGrid().getPrefWidth());
             button.setMaxWidth(Double.MAX_VALUE);
         }, new Button[][] { //TODO make the buttons
-                { button("%"), button("%"), button("CE"), button("C"), button("<-"), button("/") }, //
-                { button("%"), button("sqrt"), button("7"), button("8"), button("9"), button("*") }, //
-                { button("%"), button("x^2"), button("4"), button("5"), button("6"), button("-") }, //
-                { button("%"), button("x^3"), button("1"), button("2"), button("3"), button("+") }, //
-                { button("%"), button("1/x"), button("+/-"), button("0"), button("."), button("=") } //
+                { button("^"), button("%"), button("CE"), button("C"), button("<-"), button("/") }, //
+                { button("'pi'"), button("sqrt"), button("7"), button("8"), button("9"), button("*") }, //
+                { button("'e'"), button("x^2"), button("4"), button("5"), button("6"), button("-") }, //
+                { button("("), button("x^3"), button("1"), button("2"), button("3"), button("+") }, //
+                { button(")"), button("1/x"), button("+/-"), button("0"), button("."), button("=") } //
         });
 
         advancedGrid = gb.getGrid();

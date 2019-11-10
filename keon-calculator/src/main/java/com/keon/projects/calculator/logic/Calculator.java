@@ -23,14 +23,14 @@ public class Calculator {
             return x0;
         return new Calculator(objs).calculate0(x0, 2, objs.length);
     }
-    
+
     private static String preprocess(String exp) {
         return Constants.evalConstants(exp.replace(" ", ""));
     }
 
     // k0 should be on a number
     private double calculate0(double v, final int k0, final int kf) {
-        for (int k = k0; k < kf;) {
+        for (int k = k0; k < kf; ) {
             final Operator op1 = new Operator((String) args[k - 1]);
             double x = (double) args[k];
             if (k + 1 < kf) {
