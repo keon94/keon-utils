@@ -1,21 +1,36 @@
 package com.keon.projects.ipc;
 
+import org.zeroturnaround.exec.ProcessExecutor;
+import org.zeroturnaround.exec.ProcessResult;
+import org.zeroturnaround.exec.StartedProcess;
+import org.zeroturnaround.exec.stream.LogOutputStream;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class JavaProcess {
 
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface Remote {
+    }
+
     private final Class<?> klass;
-    private Process process;
+    private StartedProcess process;
     private static final long PROCESS_TIMEOUT_MILLIS = 30000;
     private static int DEBUG_PORT = 8100;
+
+    private final Logger log = LogManager.getLogger();
 
     /**
      * @param klass The class that the new JVM will execute (must have a main method)
@@ -30,69 +45,68 @@ public class JavaProcess {
 
     /**
      * Starts the JVM in the background.
+     *
      * @param args
      * @throws Exception
      */
     public void exec(final String... args) throws Exception {
-        final ProcessBuilder processBuilder = initJvm(Arrays.asList(args));
-        processBuilder.redirectErrorStream(true);
-        final Thread streamReaderThread = new Thread(streamReader(), "streamReader");
-        process = processBuilder.start();
-        streamReaderThread.start();
+        final ProcessExecutor process = initJvm(Arrays.asList(args));
+        this.process = process.destroyOnExit().start();
     }
 
     /**
      * Waits for the JVM to terminate up to a certain timeout. That JVM's logs are also redirected to this JVM's standard output upon its completion.
+     *
      * @return true if the JVM successfully terminated, false otherwise.
      */
     public boolean awaitTermination() {
+        final Future<ProcessResult> future = process.getFuture();
         try {
-            if (!process.waitFor(PROCESS_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
-                System.err.println(klass + " is still active after timeout period. Force killing it.");
-                process.destroy();
-                return false;
-            } else if (process.exitValue() != 0) {
+            final ProcessResult result = future.get(PROCESS_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+            if (result.getExitValue() != 0) {
+                log.severe("Received exit value: " + result.getExitValue());
                 return false;
             }
-        } catch (final Exception e) {
-            e.printStackTrace();
+            return true;
+        } catch (final TimeoutException e) {
+            log.severe(klass + " is still active after timeout period. Force killing it.");
+            future.cancel(true);
+            return false;
+        } catch (ExecutionException | InterruptedException e) {
+            log.log(Level.SEVERE, e.getMessage(), e);
+            future.cancel(true);
+            return false;
         } finally {
-            if (process != null && process.isAlive()) {
-                System.err.println(klass + " is still active. Force killing it.");
-                process.destroyForcibly();
-            }
-            System.out.println(Thread.currentThread().getName() + " finished executing JVM " + klass);
+            log.info(Thread.currentThread().getName() + " finished executing JVM " + klass);
         }
-        return true;
     }
 
-    private Runnable streamReader() {
-        return () -> {
-            final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            final StringBuilder builder = new StringBuilder();
-            String line = null;
-
-            try {
-                while ((line = reader.readLine()) != null) {
-                    builder.append(line);
-                    builder.append(System.getProperty("line.separator"));
+    private OutputStream getStream(final boolean isError) {
+        if (isError) {
+            return new LogOutputStream() {
+                @Override
+                protected void processLine(String line) {
+                    System.err.println(line);
                 }
-                System.out.println("-----------------[REMOTE - " + klass + "]---------------------");
-                System.out.println(builder.toString());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        };
+            };
+        } else {
+            return new LogOutputStream() {
+                @Override
+                protected void processLine(String line) {
+                    System.out.println(line);
+                }
+            };
+        }
     }
 
-    private ProcessBuilder initJvm(final List<String> args) {
+    private ProcessExecutor initJvm(final List<String> args) {
         final String javaHome = System.getProperty("java.home");
         final String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
         final String classpath = System.getProperty("java.class.path");
         final String className = klass.getName();
         final List<String> command = new ArrayList<>(Arrays.asList(javaBin, ("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=" + DEBUG_PORT++), "-cp", classpath, className));
         command.addAll(args);
-        System.out.println("Launching JVM with commands: " + command.toString());
-        return new ProcessBuilder(command);
+        log.info("Launching JVM with commands: " + command.toString());
+        return new ProcessExecutor().command(command).redirectOutput(getStream(false)).redirectError(getStream(true));
     }
 }

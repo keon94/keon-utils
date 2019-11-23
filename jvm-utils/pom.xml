@@ -16,6 +16,11 @@
             <version>5.0.0-RC4</version>
         </dependency>
         <dependency>
+            <groupId>org.zeroturnaround</groupId>
+            <artifactId>zt-exec</artifactId>
+            <version>1.11</version>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>

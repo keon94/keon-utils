@@ -1,3 +1,5 @@
+package com.keon.projects.ipc;
+
 import org.junit.jupiter.api.Test;
 
 public class MultiJvmTest extends MultiJVMTestSuite {
@@ -12,7 +14,8 @@ public class MultiJvmTest extends MultiJVMTestSuite {
 
         @Override
         protected void run() throws Exception {
-            System.out.println("P1...");
+            log.info("P1");
+            throw new Exception("kfhfh");
         }
     }
 
@@ -20,7 +23,7 @@ public class MultiJvmTest extends MultiJVMTestSuite {
 
         @Override
         protected void run() throws Exception {
-            System.out.println("P2...");
+            log.info("P2");
         }
     }
 
