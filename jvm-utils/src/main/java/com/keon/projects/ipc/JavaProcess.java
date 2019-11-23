@@ -7,8 +7,6 @@ import org.zeroturnaround.exec.stream.LogOutputStream;
 
 import java.io.File;
 import java.io.OutputStream;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,16 +19,12 @@ import java.util.logging.Logger;
 
 public class JavaProcess {
 
-    @Retention(RetentionPolicy.RUNTIME)
-    public @interface Remote {
-    }
-
     private final Class<?> klass;
     private StartedProcess process;
     private static final long PROCESS_TIMEOUT_MILLIS = 30000;
     private static int DEBUG_PORT = 8100;
 
-    private final Logger log = LogManager.getLogger();
+    private static final Logger log = LogManager.getLogger();
 
     /**
      * @param klass The class that the new JVM will execute (must have a main method)

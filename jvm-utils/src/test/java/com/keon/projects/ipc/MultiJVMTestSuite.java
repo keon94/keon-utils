@@ -29,15 +29,18 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
 
     @AfterEach
     public void after() throws IOException {
-        for (final JavaProcess jvm : jvmPool) {
-            try {
-                comm.writeKey(JvmComm.SHUTDOWN_JVM, "true");
-            } finally {
-                System.gc(); //removes mmaped file descriptor from memory so it can be deleted. Needs to be called as this is a JDK bug: https://bugs.openjdk.java.net/browse/JDK-4715154
-                if (jvm != null && !jvm.awaitTermination()) {
-                    log.severe("Failed to properly terminate JVM running " + jvm.getMainClass().getName());
+        try {
+            for (final JavaProcess jvm : jvmPool) {
+                try {
+                    comm.writeKey(JvmComm.SHUTDOWN_JVM, "true");
+                } finally {
+                    if (jvm != null && !jvm.awaitTermination()) {
+                        log.severe("Failed to properly terminate JVM running " + jvm.getMainClass().getName());
+                    }
                 }
             }
+        } finally {
+            System.gc(); //removes mmaped file descriptor from memory so it can be deleted. Needs to be called as this is a JDK bug: https://bugs.openjdk.java.net/browse/JDK-4715154
         }
         Files.delete(Paths.get(comm.commChannelPath));
     }
@@ -54,8 +57,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
         comm.writeKey(JvmComm.TERMINATE_JVM, "true");
     }
 
-    @JavaProcess.Remote
-    public static abstract class SubJvm {
+    public static abstract class SubJvm extends JvmContext.RemoteContext {
 
         protected final JvmComm comm = new JvmComm("comm_channel");
         protected static final Logger log = LogManager.getLogger(SubJvm.class);

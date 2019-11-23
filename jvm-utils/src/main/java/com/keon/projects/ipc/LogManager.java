@@ -22,20 +22,15 @@ public class LogManager {
 
     private static final SimpleDateFormat DF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private static final String PID = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
-    ;
-
-    public static Logger getCallbackLogger() {
-        return getLocalLogger(Reflection.getCallerClass(2));
-    }
 
     public static Logger getLogger() {
-        return getLocalLogger(Reflection.getCallerClass(1));
+        return getLogger(Reflection.getCallerClass(1));
     }
 
     public static Logger getLogger(final Class<?> clazz) {
         Class<?> klass = clazz;
         do {
-            if (clazz.isAnnotationPresent(JavaProcess.Remote.class)) {
+            if (JvmContext.isRemoteContext()) {
                 return getRemoteLogger(clazz);
             }
             klass = klass.getSuperclass();
@@ -44,36 +39,32 @@ public class LogManager {
     }
 
     private static Logger getLocalLogger(final Class<?> clazz) {
-        return getLogger(clazz, record -> {
-                    return MessageFormat.format(
-                            "[{0}][Local: PID-{1}][Thread-{2}][{3}.{4}({5})]" +
-                                    ":\n  {6} - {7}\n",
-                            DF.format(new Date(record.getMillis())),
-                            PID,
-                            Thread.currentThread().getName(),
-                            record.getSourceClassName(),
-                            record.getSourceMethodName(),
-                            record.getParameters(),
-                            record.getLevel(),
-                            record.getMessage());
-                }
+        return getLogger(clazz, record -> MessageFormat.format(
+                "[LOCAL][{0}][PID-{1}][Thread-{2}][{3}.{4}({5})]" +
+                        ":\n  {6} - {7}\n",
+                DF.format(new Date(record.getMillis())),
+                PID,
+                Thread.currentThread().getName(),
+                record.getSourceClassName(),
+                record.getSourceMethodName(),
+                record.getParameters(),
+                record.getLevel(),
+                record.getMessage())
         );
     }
 
     private static Logger getRemoteLogger(final Class<?> clazz) {
-        return getLogger(clazz, record -> {
-                    return MessageFormat.format(
-                            "[{0}][REMOTE: PID-{1}][Thread-{2}][{3}.{4}({5})]" +
-                                    ":\n  {6} - {7}\n",
-                            DF.format(new Date(record.getMillis())),
-                            PID,
-                            Thread.currentThread().getName(),
-                            record.getSourceClassName(),
-                            record.getSourceMethodName(),
-                            record.getParameters(),
-                            record.getLevel(),
-                            record.getMessage());
-                }
+        return getLogger(clazz, record -> MessageFormat.format(
+                "[REMOTE][{0}][PID-{1}][Thread-{2}][{3}.{4}({5})]" +
+                        ":\n  {6} - {7}\n",
+                DF.format(new Date(record.getMillis())),
+                PID,
+                Thread.currentThread().getName(),
+                record.getSourceClassName(),
+                record.getSourceMethodName(),
+                record.getParameters(),
+                record.getLevel(),
+                record.getMessage())
         );
     }
 

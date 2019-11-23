@@ -25,12 +25,11 @@ public class JvmComm {
     public final String commChannelPath;
     public final String commChannelName;
 
-    private final Logger log;
+    private static final Logger log = LogManager.getLogger();;
 
     public JvmComm(final String sharedChannelName) {
         this.commChannelName = sharedChannelName;
         commChannelPath = Paths.get("src", "test", "resources", commChannelName).toAbsolutePath().toString();
-        log = LogManager.getCallbackLogger();
     }
 
     //========================= Cross JVM communication methods ======================================================
