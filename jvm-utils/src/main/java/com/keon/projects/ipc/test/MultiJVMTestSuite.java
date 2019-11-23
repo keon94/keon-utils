@@ -1,5 +1,9 @@
-package com.keon.projects.ipc;
+package com.keon.projects.ipc.test;
 
+import com.keon.projects.ipc.JavaProcess;
+import com.keon.projects.ipc.JvmComm;
+import com.keon.projects.ipc.JvmContext;
+import com.keon.projects.ipc.LogManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,9 +21,10 @@ import java.util.logging.Logger;
 @ExtendWith(MultiJVMTestSuite.class)
 public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
 
-    protected static final Logger log = LogManager.getLogger(MultiJVMTestSuite.class);
+    protected static final Logger log = LogManager.getLogger();
+    private static final String COMM_CHANNEL = "comm_channel";
 
-    protected final JvmComm comm = new JvmComm("comm_channel");
+    protected final JvmComm comm = new JvmComm(COMM_CHANNEL);
     private final List<JavaProcess> jvmPool = new ArrayList<>();
 
     @BeforeEach
@@ -45,7 +50,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
         Files.delete(Paths.get(comm.commChannelPath));
     }
 
-    protected JavaProcess start(final Class<? extends SubJvm> clazz) throws Exception {
+    protected JavaProcess start(final Class<? extends RemoteJvm> clazz) throws Exception {
         final JavaProcess jvm = new JavaProcess(clazz);
         jvm.exec(clazz.getName());
         jvmPool.add(jvm);
@@ -55,24 +60,28 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
     @Override
     public void handleTestExecutionException(ExtensionContext context, Throwable throwable) throws Throwable {
         comm.writeKey(JvmComm.TERMINATE_JVM, "true");
+        throw throwable;
     }
 
-    public static abstract class SubJvm extends JvmContext.RemoteContext {
+    /**
+     * subclasses of this class will run on remote JVMs
+     */
+    public static abstract class RemoteJvm extends JvmContext.RemoteContext {
 
-        protected final JvmComm comm = new JvmComm("comm_channel");
-        protected static final Logger log = LogManager.getLogger(SubJvm.class);
+        protected final JvmComm comm = new JvmComm(COMM_CHANNEL);
+        protected static final Logger log = LogManager.getLogger();
 
         public static void main(String[] args) {
             log.info("Main...");
-            int exitCode = 0; // zero means success
-            final SubJvm jvm;
+            final RemoteJvm jvm;
             try {
-                jvm = (SubJvm) Class.forName(args[0]).newInstance();
-            } catch (Exception e) {
+                jvm = (RemoteJvm) Class.forName(args[0]).newInstance();
+            } catch (final LinkageError | ClassNotFoundException | InstantiationException | IllegalAccessException e) {
                 log.log(Level.SEVERE, "JVM could not instantiate " + args[0], e);
                 System.exit(-1);
                 return;
             }
+            int exitCode = 0; // zero means success
             try {
                 jvm.run();
                 jvm.comm.waitUntilAvailable(JvmComm.SHUTDOWN_JVM);

@@ -24,21 +24,21 @@ public class LogManager {
     private static final String PID = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
 
     public static Logger getLogger() {
-        return getLogger(Reflection.getCallerClass(1));
+        return getLogger(Reflection.getCallerClass(2));
     }
 
     public static Logger getLogger(final Class<?> clazz) {
-        Class<?> klass = clazz;
-        do {
-            if (JvmContext.isRemoteContext()) {
-                return getRemoteLogger(clazz);
-            }
-            klass = klass.getSuperclass();
-        } while (klass != null);
-        return getLocalLogger(clazz);
+        final Logger logger = java.util.logging.LogManager.getLogManager().getLogger(clazz.getName());
+        if(logger != null) {
+            return logger;
+        }
+        if (JvmContext.isRemoteContext()) {
+            return getRemoteLogger(clazz.getName());
+        }
+        return getLocalLogger(clazz.getName());
     }
 
-    private static Logger getLocalLogger(final Class<?> clazz) {
+    private static Logger getLocalLogger(final String clazz) {
         return getLogger(clazz, record -> MessageFormat.format(
                 "[LOCAL][{0}][PID-{1}][Thread-{2}][{3}.{4}({5})]" +
                         ":\n  {6} - {7}\n",
@@ -53,7 +53,7 @@ public class LogManager {
         );
     }
 
-    private static Logger getRemoteLogger(final Class<?> clazz) {
+    private static Logger getRemoteLogger(final String clazz) {
         return getLogger(clazz, record -> MessageFormat.format(
                 "[REMOTE][{0}][PID-{1}][Thread-{2}][{3}.{4}({5})]" +
                         ":\n  {6} - {7}\n",
@@ -68,9 +68,9 @@ public class LogManager {
         );
     }
 
-    private static Logger getLogger(final Class<?> clazz, final Function<LogRecord, String> formatterFunction) {
+    private static Logger getLogger(final String clazz, final Function<LogRecord, String> formatterFunction) {
 
-        final Logger logger = Logger.getLogger(clazz.getName());
+        final Logger logger = Logger.getLogger(clazz);
         logger.setUseParentHandlers(false);
 
         final StreamHandler handler = new StreamHandler(System.out, new SimpleFormatter()) {

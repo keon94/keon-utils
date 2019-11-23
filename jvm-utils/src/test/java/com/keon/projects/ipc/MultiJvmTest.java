@@ -1,5 +1,6 @@
 package com.keon.projects.ipc;
 
+import com.keon.projects.ipc.test.MultiJVMTestSuite;
 import org.junit.jupiter.api.Test;
 
 public class MultiJvmTest extends MultiJVMTestSuite {
@@ -10,7 +11,7 @@ public class MultiJvmTest extends MultiJVMTestSuite {
             super.start(P2.class);
     }
 
-    public static class P1 extends SubJvm {
+    public static class P1 extends RemoteJvm {
 
         @Override
         protected void run() throws Exception {
@@ -19,7 +20,7 @@ public class MultiJvmTest extends MultiJVMTestSuite {
         }
     }
 
-    public static class P2 extends SubJvm {
+    public static class P2 extends RemoteJvm {
 
         @Override
         protected void run() throws Exception {
