@@ -11,8 +11,8 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestExecutionExceptionHandler;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -25,12 +25,20 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
     protected static final Logger log = LogManager.getLogger();
     private static final String COMM_CHANNEL = "comm_channel";
 
-    protected final JvmComm comm = new JvmComm(COMM_CHANNEL);
+    protected final JvmComm comm;
     private final List<JavaProcess> jvmPool = new ArrayList<>();
+
+    public MultiJVMTestSuite() {
+        try {
+            this.comm = new JvmComm(COMM_CHANNEL);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @BeforeEach
     public void before() throws IOException {
-        Files.deleteIfExists(Paths.get(comm.commChannelPath)); //just to be safe
+        Files.deleteIfExists(comm.commChannelPath); //just to be safe
     }
 
     @AfterEach
@@ -48,7 +56,17 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
         } finally {
             System.gc(); //removes mmaped file descriptor from memory so it can be deleted. Needs to be called as this is a JDK bug: https://bugs.openjdk.java.net/browse/JDK-4715154
         }
-        Files.deleteIfExists(Paths.get(comm.commChannelPath));
+        //Retry a few times because there will be a delay until all JVMs release their access
+        for (int i = 0; ; ++i) {
+            try {
+                Files.deleteIfExists(comm.commChannelPath);
+                log.info(comm.commChannelPath.toString() + " deleted after " + i + " retries");
+                break;
+            } catch (final AccessDeniedException e) {
+                if (i == 4)
+                    throw e;
+            }
+        }
     }
 
     protected JavaProcess start(final Class<? extends RemoteJvm> clazz) throws Exception {
@@ -95,10 +113,11 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
 
         public static void main(String[] args) {
             log.info("JVM main method called");
-            final JvmComm comm = new JvmComm(COMM_CHANNEL);
+            final JvmComm comm;
             final RemoteJvm jvm;
             if (args.length == 0) {
                 try {
+                    comm = new JvmComm(COMM_CHANNEL);
                     final JvmRunner runner = comm.waitFor(JvmComm.LAMBDA_RUNNER);
                     jvm = new RemoteJvm() {
                         @Override
@@ -113,8 +132,9 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
                 }
             } else {
                 try {
+                    comm = new JvmComm(COMM_CHANNEL);
                     jvm = (RemoteJvm) Class.forName(args[0]).newInstance();
-                } catch (final LinkageError | ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+                } catch (final LinkageError | ClassNotFoundException | InstantiationException | IllegalAccessException | IOException e) {
                     log.log(Level.SEVERE, "JVM could not instantiate " + args[0], e);
                     System.exit(-1);
                     return;

@@ -5,8 +5,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -22,20 +25,19 @@ public class JvmComm {
 
     public static final String SHUTDOWN_JVM = "Shutdown JVM";
     public static final String TERMINATE_JVM = "Terminate JVM";
-    public static final String LAMBDA_RUNNER = "Terminate JVM";
+    public static final String LAMBDA_RUNNER = "Lambda Runner";
 
     private static final long MAX_BUFFER_MEMORY_BYTES = 4096;
     private static final long DEFAULT_AWAIT_TIMEOUT_SECONDS = 30;
 
-    public final String commChannelPath;
     public final String commChannelName;
+    public final Path commChannelPath;
 
     private static final Logger log = LogManager.getLogger();
-    ;
 
-    public JvmComm(final String sharedChannelName) {
+    public JvmComm(final String sharedChannelName) throws IOException {
         this.commChannelName = sharedChannelName;
-        commChannelPath = Paths.get("src", "test", "resources", commChannelName).toAbsolutePath().toString();
+        commChannelPath = Paths.get(System.getProperty("java.io.tmpdir") + "/" + sharedChannelName + ".tmp");
     }
 
     //========================= Cross JVM communication methods ======================================================
@@ -101,7 +103,7 @@ public class JvmComm {
         log(log, "Beginning to remove keys: {0}", keys);
         final KryoSerializer serializer = new KryoSerializer();
         Map<String, T> existingMap = null;
-        try (final FileChannel channel = getChannel();) {
+        try (final FileChannel channel = getChannel()) {
             final MappedByteBuffer mmapedBuffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, MAX_BUFFER_MEMORY_BYTES);
             byte[] existingBytes = new byte[mmapedBuffer.limit()];
             mmapedBuffer.get(existingBytes);
@@ -151,33 +153,35 @@ public class JvmComm {
             final KryoSerializer serializer = new KryoSerializer();
             final long begin = System.currentTimeMillis();
             while (true) {
+                byte[] existingBytes = null;
                 try (final FileChannel channel = getChannel()) {
                     final MappedByteBuffer mmapedBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, MAX_BUFFER_MEMORY_BYTES);
-                    byte[] existingBytes = new byte[mmapedBuffer.limit()];
+                    existingBytes = new byte[mmapedBuffer.limit()];
                     mmapedBuffer.get(existingBytes);
-                    Map<String, T> existingMap = null;
-                    existingMap = serializer.deserialize(existingBytes);
-                    if (existingMap == null) {
-                        existingMap = new HashMap<>();
-                    } else if (existingMap.containsKey(key)) {
-                        return existingMap.get(key);
-                    }
-                    Thread.sleep(200);
-                    if (existingMap != null && existingMap.containsKey(TERMINATE_JVM)) {
-                        if (!SHUTDOWN_JVM.equals(key)) {
-                            error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
-                            throw new IllegalStateException("Key \"" + TERMINATE_JVM + "\" detected while not waiting for key \"" + SHUTDOWN_JVM + "\"!");
-                        }
-                        error(log, "Key \"{0}\" detected while waiting for key \"{1}\"! Exiting wait...", TERMINATE_JVM, SHUTDOWN_JVM);
-                        error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
-                        return null;
-                    }
-                    if (System.currentTimeMillis() - begin > unit.toMillis(timeout)) {
-                        error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
-                        throw new TimeoutException("Timed out waiting for key \"" + key + "\" to become available");
-                    }
                 }
+                Map<String, T> existingMap = null;
+                existingMap = serializer.deserialize(existingBytes);
+                if (existingMap == null) {
+                    existingMap = new HashMap<>();
+                } else if (existingMap.containsKey(key)) {
+                    return existingMap.get(key);
+                }
+                if (existingMap != null && existingMap.containsKey(TERMINATE_JVM)) {
+                    if (!SHUTDOWN_JVM.equals(key)) {
+                        error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
+                        throw new IllegalStateException("Key \"" + TERMINATE_JVM + "\" detected while not waiting for key \"" + SHUTDOWN_JVM + "\"!");
+                    }
+                    error(log, "Key \"{0}\" detected while waiting for key \"{1}\"! Exiting wait...", TERMINATE_JVM, SHUTDOWN_JVM);
+                    error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
+                    return null;
+                }
+                if (System.currentTimeMillis() - begin > unit.toMillis(timeout)) {
+                    error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
+                    throw new TimeoutException("Timed out waiting for key \"" + key + "\" to become available");
+                }
+                Thread.sleep(100);
             }
+
         } finally {
             log(log, "Finished waiting to receive key: \"{0}\"", key);
         }
@@ -186,11 +190,7 @@ public class JvmComm {
     //=================================Helpers===================================================================
 
     private FileChannel getChannel() throws IOException {
-        final File file = new File(commChannelPath);
-        file.setReadable(true, false);
-        file.setWritable(true, false);
-        file.setExecutable(true, false);
-        return FileChannel.open(file.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+        return FileChannel.open(commChannelPath, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
     }
 
     //===============================Cross Jvm Lambdas===========================================================
