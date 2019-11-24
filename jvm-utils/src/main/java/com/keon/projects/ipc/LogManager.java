@@ -2,17 +2,17 @@ package com.keon.projects.ipc;
 
 import sun.reflect.Reflection;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
 import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.function.Function;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 import java.util.logging.StreamHandler;
 
 public class LogManager {
@@ -29,51 +29,21 @@ public class LogManager {
 
     public static Logger getLogger(final Class<?> clazz) {
         final Logger logger = java.util.logging.LogManager.getLogManager().getLogger(clazz.getName());
-        if(logger != null) {
+        if (logger != null) {
             return logger;
         }
         if (JvmContext.isRemoteContext()) {
-            return getRemoteLogger(clazz.getName());
+            return getLogger(clazz.getName(), new CustomFormatter("REMOTE"));
         }
-        return getLocalLogger(clazz.getName());
+        return getLogger(clazz.getName(), new CustomFormatter("LOCAL"));
     }
 
-    private static Logger getLocalLogger(final String clazz) {
-        return getLogger(clazz, record -> MessageFormat.format(
-                "[LOCAL][{0}][PID-{1}][Thread-{2}][{3}.{4}({5})]" +
-                        ":\n  {6} - {7}\n",
-                DF.format(new Date(record.getMillis())),
-                PID,
-                Thread.currentThread().getName(),
-                record.getSourceClassName(),
-                record.getSourceMethodName(),
-                record.getParameters(),
-                record.getLevel(),
-                record.getMessage())
-        );
-    }
-
-    private static Logger getRemoteLogger(final String clazz) {
-        return getLogger(clazz, record -> MessageFormat.format(
-                "[REMOTE][{0}][PID-{1}][Thread-{2}][{3}.{4}({5})]" +
-                        ":\n  {6} - {7}\n",
-                DF.format(new Date(record.getMillis())),
-                PID,
-                Thread.currentThread().getName(),
-                record.getSourceClassName(),
-                record.getSourceMethodName(),
-                record.getParameters(),
-                record.getLevel(),
-                record.getMessage())
-        );
-    }
-
-    private static Logger getLogger(final String clazz, final Function<LogRecord, String> formatterFunction) {
+    private static Logger getLogger(final String clazz, final CustomFormatter formatter) {
 
         final Logger logger = Logger.getLogger(clazz);
         logger.setUseParentHandlers(false);
 
-        final StreamHandler handler = new StreamHandler(System.out, new SimpleFormatter()) {
+        final StreamHandler handler = new StreamHandler(System.out, formatter) {
             {
                 stderrHandler = new ConsoleHandler();
                 init();
@@ -93,17 +63,57 @@ public class LogManager {
             }
 
             private void init() {
-                final Formatter formatter = new Formatter() {
-                    @Override
-                    public String format(LogRecord record) {
-                        return formatterFunction.apply(record);
-                    }
-                };
-                this.setFormatter(formatter);
                 stderrHandler.setFormatter(formatter);
             }
         };
         logger.addHandler(handler);
         return logger;
     }
+
+    private static class CustomFormatter extends Formatter {
+
+        private final String context;
+
+        private CustomFormatter(String context) {
+            this.context = context;
+        }
+
+        @Override
+        public String format(LogRecord record) {
+            return MessageFormat.format(
+                    "[" + context + "][{0}][PID-{1}][Thread-{2}][{3}.{4}({5})]" +
+                            ":\n  {6} - {7}{8}\n",
+                    DF.format(new Date(record.getMillis())),
+                    PID,
+                    Thread.currentThread().getName(),
+                    record.getSourceClassName(),
+                    record.getSourceMethodName(),
+                    formatArguments(record.getSourceClassName(), record.getSourceMethodName()),
+                    record.getLevel(),
+                    super.formatMessage(record),
+                    formatThrowable(record.getThrown()));
+        }
+
+        private static String formatThrowable(final Throwable t) {
+            if (t == null) {
+                return "";
+            }
+            final StringWriter sw = new StringWriter();
+            try (final PrintWriter pw = new PrintWriter(sw) {
+                @Override
+                public void write(final String s) {
+                    super.write("  " + s);
+                }
+            }) {
+                pw.println();
+                t.printStackTrace(pw);
+            }
+            return sw.toString();
+        }
+
+        private static String formatArguments(final String clazz, final String method) {
+            return "*"; //Nothing we can do to infer the arg signature
+        }
+    }
+
 }
