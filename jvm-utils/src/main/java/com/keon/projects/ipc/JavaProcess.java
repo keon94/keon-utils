@@ -21,9 +21,9 @@ public class JavaProcess {
 
     private final Class<?> klass;
     private StartedProcess process;
-    private static final long DEFAULT_PROCESS_TIMEOUT_SECONDS = 30;
-    private static int DEBUG_PORT = 8100;
+    private long timeoutSeconds = 30;
 
+    private static int DEBUG_PORT = 8100;
     private static final Logger log = LogManager.getLogger();
 
     /**
@@ -31,6 +31,11 @@ public class JavaProcess {
      */
     public JavaProcess(final Class<?> klass) {
         this.klass = klass;
+    }
+
+    public JavaProcess timeout(final long timeout, final TimeUnit unit) {
+        timeoutSeconds = unit.toSeconds(timeout);
+        return this;
     }
 
     public Class<?> getMainClass() {
@@ -48,20 +53,15 @@ public class JavaProcess {
         this.process = process.destroyOnExit().start();
     }
 
-
-    public boolean awaitTermination() {
-        return awaitTermination(DEFAULT_PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    }
-
     /**
-     * Waits for the JVM to terminate up to a certain timeout.
+     * Waits for the JVM to terminate up to a default timeout unless otherwise explicitly set.
      *
      * @return true if the JVM successfully terminated, false otherwise.
      */
-    public boolean awaitTermination(final long duration, final TimeUnit unit) {
+    public boolean awaitTermination() {
         final Future<ProcessResult> future = process.getFuture();
         try {
-            final ProcessResult result = future.get(duration, unit);
+            final ProcessResult result = future.get(timeoutSeconds, TimeUnit.SECONDS);
             if (result.getExitValue() != 0) {
                 log.severe("Received exit value: " + result.getExitValue());
                 return false;

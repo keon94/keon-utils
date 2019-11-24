@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,7 +38,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
         try {
             for (final JavaProcess jvm : jvmPool) {
                 try {
-                    comm.writeKey(JvmComm.SHUTDOWN_JVM, "true");
+                    comm.write(JvmComm.SHUTDOWN_JVM, "true");
                 } finally {
                     if (jvm != null && !jvm.awaitTermination()) {
                         log.severe("Failed to properly terminate JVM running " + jvm.getMainClass().getName());
@@ -47,19 +48,23 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
         } finally {
             System.gc(); //removes mmaped file descriptor from memory so it can be deleted. Needs to be called as this is a JDK bug: https://bugs.openjdk.java.net/browse/JDK-4715154
         }
-        Files.delete(Paths.get(comm.commChannelPath));
+        Files.deleteIfExists(Paths.get(comm.commChannelPath));
     }
 
     protected JavaProcess start(final Class<? extends RemoteJvm> clazz) throws Exception {
+        return start(clazz, 30, TimeUnit.SECONDS);
+    }
+
+    protected JavaProcess start(final Class<? extends RemoteJvm> clazz, final long timeout, final TimeUnit unit) throws Exception {
         final JavaProcess jvm = new JavaProcess(clazz);
-        jvm.exec(clazz.getName());
+        jvm.timeout(timeout, unit).exec(clazz.getName());
         jvmPool.add(jvm);
         return jvm;
     }
 
     @Override
     public void handleTestExecutionException(ExtensionContext context, Throwable throwable) throws Throwable {
-        comm.writeKey(JvmComm.TERMINATE_JVM, "true");
+        comm.write(JvmComm.TERMINATE_JVM, "true");
         throw throwable;
     }
 
@@ -94,7 +99,8 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
             }
         }
 
-        protected abstract void run() throws Exception;
+
+        protected abstract void run() throws Throwable;
 
     }
 

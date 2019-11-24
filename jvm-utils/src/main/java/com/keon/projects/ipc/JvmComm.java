@@ -2,6 +2,7 @@ package com.keon.projects.ipc;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
@@ -10,7 +11,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,12 +25,13 @@ public class JvmComm {
     public static final String TERMINATE_JVM = "Terminate JVM";
 
     private static final long MAX_BUFFER_MEMORY_BYTES = 4096;
-    private static final long AWAIT_TIMEOUT_MILLIS = 30000;
+    private static final long DEFAULT_AWAIT_TIMEOUT_SECONDS = 30;
 
     public final String commChannelPath;
     public final String commChannelName;
 
-    private static final Logger log = LogManager.getLogger();;
+    private static final Logger log = LogManager.getLogger();
+    ;
 
     public JvmComm(final String sharedChannelName) {
         this.commChannelName = sharedChannelName;
@@ -34,12 +40,40 @@ public class JvmComm {
 
     //========================= Cross JVM communication methods ======================================================
 
+    public interface JFunction<T, R> extends Function<T, R>, Serializable {
+    }
+    public interface JConsumer<T> extends Consumer<T>, Serializable {
+    }
+    public interface JSupplier<T> extends Supplier<T>, Serializable {
+    }
+    public interface JRunnable extends Runnable, Serializable {
+    }
+
+    public void writeLambda(final String key, final JFunction<?,?> function) throws IOException {
+        write(key, function);
+    }
+
+    public void writeLambda(final String key, final JConsumer<?> function) throws IOException {
+        write(key, function);
+    }
+
+    public void writeLambda(final String key, final JSupplier<?> function) throws IOException {
+        write(key, function);
+    }
+
+    public void writeLambda(final String key, final JRunnable function) throws IOException {
+        write(key, function);
+    }
+
     /**
      * Writes the key-value pair to the "store".
      *
      * @throws IOException
      */
-    public <T> void writeKey(final String key, final T value) throws IOException {
+    public <T> void write(final String key, final T value) throws IOException {
+        if(value.getClass().isSynthetic() && !(value instanceof Serializable)) {
+            throw new IllegalArgumentException(value.getClass() + " must implement Serializable");
+        }
         log.info("Beginning to write key: \"" + key + "\" value: \"" + value + "\"");
         final DataSerializer serializer = new DataSerializer();
         Map<String, T> existingMap = null;
@@ -117,27 +151,26 @@ public class JvmComm {
      * @throws IOException
      */
     public <T> T waitUntilAvailable(final String key) throws IOException, TimeoutException, InterruptedException {
-        return waitUntilAvailable(key, AWAIT_TIMEOUT_MILLIS);
+        return waitUntilAvailable(key, DEFAULT_AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
-    <T> T waitUntilAvailable(final String key, final long timeoutMillis) throws IOException, TimeoutException, InterruptedException {
+    <T> T waitUntilAvailable(final String key, final long timeout, final TimeUnit unit) throws IOException, TimeoutException, InterruptedException {
         log.info("Beginning waiting to receive key \"" + key + "\"");
         try {
             final DataSerializer serializer = new DataSerializer();
             final long begin = System.currentTimeMillis();
             while (true) {
-                try (final FileChannel channel = getChannel();) {
+                try (final FileChannel channel = getChannel()) {
                     final MappedByteBuffer mmapedBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, MAX_BUFFER_MEMORY_BYTES);
                     byte[] existingBytes = new byte[mmapedBuffer.limit()];
                     mmapedBuffer.get(existingBytes);
                     Map<String, T> existingMap = null;
-                    try {
-                        existingMap = serializer.deserialize(existingBytes);
-                        if (existingMap.containsKey(key)) {
-                            return existingMap.get(key);
-                        }
-                    } catch (final Exception e) {
-                        //ignore - thrown when there's nothing to deserialize. can improve this later
+                    existingMap = serializer.deserialize(existingBytes);
+                    if(existingMap == null) {
+                        existingMap = new HashMap<>();
+                    }
+                    else if (existingMap.containsKey(key)) {
+                        return existingMap.get(key);
                     }
                     Thread.sleep(200);
                     if (existingMap != null && existingMap.containsKey(TERMINATE_JVM)) {
@@ -149,7 +182,7 @@ public class JvmComm {
                         log.severe("Existing Keys: " + Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
                         return null;
                     }
-                    if (System.currentTimeMillis() - begin > timeoutMillis) {
+                    if (System.currentTimeMillis() - begin > unit.toMillis(timeout)) {
                         log.severe("Existing Keys: " + Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
                         throw new TimeoutException("Timed out waiting for key \"" + key + "\" to become available");
                     }

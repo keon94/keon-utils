@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.kryo.serializers.ClosureSerializer;
 import com.esotericsoftware.kryo.serializers.CompatibleFieldSerializer;
 import com.esotericsoftware.kryo.util.DefaultInstantiatorStrategy;
 import org.objenesis.strategy.StdInstantiatorStrategy;
@@ -13,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.invoke.SerializedLambda;
 
 class DataSerializer {
 
@@ -27,7 +29,7 @@ class DataSerializer {
     }
 
     public <O> O deserialize(final byte[] bytes) throws KryoException {
-        if (bytes == null || bytes.length == 0)
+        if (bytes == null || bytes.length == 0 || isNull(bytes))
             return null;
         return deserialize(new ByteArrayInputStream(bytes));
     }
@@ -45,7 +47,7 @@ class DataSerializer {
         kryo.setClassLoader(this.getClass().getClassLoader());
         final Output output = new Output(outputStream);
         try {
-            kryo.writeObject(output, new KryoWrapper(object));
+            kryo.writeClassAndObject(output, object);
         } finally {
             output.close();
         }
@@ -60,7 +62,7 @@ class DataSerializer {
         kryo.setClassLoader(this.getClass().getClassLoader());
         final Input input = new Input(inputStream);
         try {
-            return (O) kryo.readObject(input, KryoWrapper.class).object;
+            return (O) kryo.readClassAndObject(input);
         } finally {
             input.close();
         }
@@ -73,19 +75,18 @@ class DataSerializer {
         kryo.setInstantiatorStrategy(strategy);
         kryo.setDefaultSerializer(CompatibleFieldSerializer.class);
         kryo.setRegistrationRequired(false);
+        kryo.register(Object[].class);
+        kryo.register(Class.class);
+        kryo.register(SerializedLambda.class);
+        kryo.register(ClosureSerializer.Closure.class, new ClosureSerializer());
         return kryo;
     }
 
-    private static class KryoWrapper {
-        final Object object;
-
-        public KryoWrapper(final Object object) {
-            this.object = object;
+    private static boolean isNull(final byte[] bytes) {
+        for(final byte b : bytes) {
+            if(b != 0)
+                return false;
         }
-
-        @Override
-        public String toString() {
-            return "kryo:[" + object + "]";
-        }
+        return true;
     }
 }
