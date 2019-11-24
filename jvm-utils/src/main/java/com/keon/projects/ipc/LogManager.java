@@ -1,5 +1,6 @@
 package com.keon.projects.ipc;
 
+import com.esotericsoftware.minlog.Log;
 import sun.reflect.Reflection;
 
 import java.io.PrintWriter;
@@ -33,9 +34,9 @@ public class LogManager {
             return logger;
         }
         if (JvmContext.isRemoteContext()) {
-            return getLogger(clazz.getName(), new CustomFormatter("REMOTE"));
+            return getLogger(clazz.getName(), new CustomFormatter(clazz.getName(),"REMOTE"));
         }
-        return getLogger(clazz.getName(), new CustomFormatter("LOCAL"));
+        return getLogger(clazz.getName(), new CustomFormatter(clazz.getName(),"LOCAL"));
     }
 
     private static Logger getLogger(final String clazz, final CustomFormatter formatter) {
@@ -73,25 +74,39 @@ public class LogManager {
     private static class CustomFormatter extends Formatter {
 
         private final String context;
+        private final String clazz;
 
-        private CustomFormatter(String context) {
+        private CustomFormatter(String clazz, String context) {
             this.context = context;
+            this.clazz = clazz;
         }
 
         @Override
         public String format(LogRecord record) {
+            final StackTraceElement e = getCallSite();
+            final String clazz = e == null ? record.getSourceClassName() : e.getClassName();
+            final String method = e == null ? record.getSourceMethodName() : e.getMethodName();
             return MessageFormat.format(
                     "[" + context + "][{0}][PID-{1}][Thread-{2}][{3}.{4}({5})]" +
                             ":\n  {6} - {7}{8}\n",
                     DF.format(new Date(record.getMillis())),
                     PID,
                     Thread.currentThread().getName(),
-                    record.getSourceClassName(),
-                    record.getSourceMethodName(),
-                    formatArguments(record.getSourceClassName(), record.getSourceMethodName()),
+                    clazz,
+                    method,
+                    formatArguments(clazz, method),
                     record.getLevel(),
                     super.formatMessage(record),
                     formatThrowable(record.getThrown()));
+        }
+
+        private StackTraceElement getCallSite() {
+            for(final StackTraceElement e :Thread.currentThread().getStackTrace()) {
+                if(e.getClassName().contains(clazz)) {
+                    return e;
+                }
+            }
+            return null;
         }
 
         private static String formatThrowable(final Throwable t) {
@@ -114,6 +129,20 @@ public class LogManager {
         private static String formatArguments(final String clazz, final String method) {
             return "*"; //Nothing we can do to infer the arg signature
         }
+    }
+
+    //====================== Helper Log functions =====================================
+
+    public static void log(final Logger log, final String message, final Object... o) {
+        log.log(Level.INFO, message, o);
+    }
+
+    public static void error(final Logger log, final String message, final Object... o) {
+        log.log(Level.SEVERE, message, o);
+    }
+
+    public static void error(final Logger log, final String message, final Throwable t, final Object... o) {
+        log.log(Level.SEVERE, MessageFormat.format(message, o), t);
     }
 
 }

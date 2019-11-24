@@ -16,7 +16,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.SerializedLambda;
 
-class DataSerializer {
+class KryoSerializer {
 
     private static final ThreadLocal<Kryo> LOCAL_KRYO = ThreadLocal.withInitial(() -> newKryo());
 
