@@ -13,9 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,6 +20,7 @@ public class JvmComm {
 
     public static final String SHUTDOWN_JVM = "Shutdown JVM";
     public static final String TERMINATE_JVM = "Terminate JVM";
+    public static final String LAMBDA_RUNNER = "Terminate JVM";
 
     private static final long MAX_BUFFER_MEMORY_BYTES = 4096;
     private static final long DEFAULT_AWAIT_TIMEOUT_SECONDS = 30;
@@ -40,28 +38,19 @@ public class JvmComm {
 
     //========================= Cross JVM communication methods ======================================================
 
-    public interface JFunction<T, R> extends Function<T, R>, Serializable {
-    }
-    public interface JConsumer<T> extends Consumer<T>, Serializable {
-    }
-    public interface JSupplier<T> extends Supplier<T>, Serializable {
-    }
-    public interface JRunnable extends Runnable, Serializable {
-    }
-
-    public void writeLambda(final String key, final JFunction<?,?> function) throws IOException {
+    public void writeLambda(final String key, final XJvmFunction<?,?> function) throws IOException {
         write(key, function);
     }
 
-    public void writeLambda(final String key, final JConsumer<?> function) throws IOException {
+    public void writeLambda(final String key, final XJvmConsumer<?> function) throws IOException {
         write(key, function);
     }
 
-    public void writeLambda(final String key, final JSupplier<?> function) throws IOException {
+    public void writeLambda(final String key, final XJvmSupplier<?> function) throws IOException {
         write(key, function);
     }
 
-    public void writeLambda(final String key, final JRunnable function) throws IOException {
+    public void writeLambda(final String key, final XJvmRunnable function) throws IOException {
         write(key, function);
     }
 
@@ -150,11 +139,11 @@ public class JvmComm {
      * @throws TimeoutException
      * @throws IOException
      */
-    public <T> T waitUntilAvailable(final String key) throws IOException, TimeoutException, InterruptedException {
-        return waitUntilAvailable(key, DEFAULT_AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    public <T> T waitFor(final String key) throws IOException, TimeoutException, InterruptedException {
+        return waitFor(key, DEFAULT_AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
-    <T> T waitUntilAvailable(final String key, final long timeout, final TimeUnit unit) throws IOException, TimeoutException, InterruptedException {
+    public <T> T waitFor(final String key, final long timeout, final TimeUnit unit) throws IOException, TimeoutException, InterruptedException {
         log.info("Beginning waiting to receive key \"" + key + "\"");
         try {
             final DataSerializer serializer = new DataSerializer();
@@ -201,5 +190,20 @@ public class JvmComm {
         file.setWritable(true, false);
         file.setExecutable(true, false);
         return FileChannel.open(file.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+    }
+
+    //===============================Cross Jvm Lambdas===========================================================
+
+    public interface XJvmFunction<T, R> extends Serializable {
+        R apply(T t) throws Throwable;
+    }
+    public interface XJvmConsumer<T> extends Serializable {
+        void accept(T t) throws Throwable;
+    }
+    public interface XJvmSupplier<T> extends Serializable {
+        T get() throws Throwable;
+    }
+    public interface XJvmRunnable extends Serializable {
+        void run() throws Throwable;
     }
 }

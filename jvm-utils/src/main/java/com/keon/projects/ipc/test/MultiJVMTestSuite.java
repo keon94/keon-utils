@@ -55,10 +55,22 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
         return start(clazz, 30, TimeUnit.SECONDS);
     }
 
+    protected JavaProcess start(final RemoteJvm.JvmRunner runner) throws Exception {
+        return start(runner, 30, TimeUnit.SECONDS);
+    }
+
     protected JavaProcess start(final Class<? extends RemoteJvm> clazz, final long timeout, final TimeUnit unit) throws Exception {
         final JavaProcess jvm = new JavaProcess(clazz);
         jvm.timeout(timeout, unit).exec(clazz.getName());
         jvmPool.add(jvm);
+        return jvm;
+    }
+
+    protected JavaProcess start(final RemoteJvm.JvmRunner runner, final long timeout, final TimeUnit unit) throws Exception {
+        final JavaProcess jvm = new JavaProcess(RemoteJvm.class);
+        jvm.timeout(timeout, unit).exec();
+        jvmPool.add(jvm);
+        comm.writeLambda(JvmComm.LAMBDA_RUNNER, runner);
         return jvm;
     }
 
@@ -73,23 +85,45 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
      */
     public static abstract class RemoteJvm extends JvmContext.RemoteContext {
 
-        protected final JvmComm comm = new JvmComm(COMM_CHANNEL);
         protected static final Logger log = LogManager.getLogger();
 
+        public interface JvmRunner extends JvmComm.XJvmConsumer<JvmComm> {
+            default Logger getLogger() {
+                return log;
+            }
+        }
+
         public static void main(String[] args) {
-            log.info("Main...");
+            log.info("JVM main method called");
+            final JvmComm comm = new JvmComm(COMM_CHANNEL);
             final RemoteJvm jvm;
-            try {
-                jvm = (RemoteJvm) Class.forName(args[0]).newInstance();
-            } catch (final LinkageError | ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-                log.log(Level.SEVERE, "JVM could not instantiate " + args[0], e);
-                System.exit(-1);
-                return;
+            if (args.length == 0) {
+                try {
+                    final JvmRunner runner = comm.waitFor(JvmComm.LAMBDA_RUNNER);
+                    jvm = new RemoteJvm() {
+                        @Override
+                        protected void run(JvmComm comm) throws Throwable {
+                            runner.accept(comm);
+                        }
+                    };
+                } catch (final Throwable t) {
+                    log.log(Level.SEVERE, "Error getting a lambda executor", t);
+                    System.exit(-2);
+                    return;
+                }
+            } else {
+                try {
+                    jvm = (RemoteJvm) Class.forName(args[0]).newInstance();
+                } catch (final LinkageError | ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+                    log.log(Level.SEVERE, "JVM could not instantiate " + args[0], e);
+                    System.exit(-1);
+                    return;
+                }
             }
             int exitCode = 0; // zero means success
             try {
-                jvm.run();
-                jvm.comm.waitUntilAvailable(JvmComm.SHUTDOWN_JVM);
+                jvm.run(comm);
+                comm.waitFor(JvmComm.SHUTDOWN_JVM);
             } catch (final Throwable t) {
                 log.log(Level.SEVERE, jvm.getClass().getName() + ": " + t.getMessage(), t);
                 exitCode = 1;
@@ -99,8 +133,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
             }
         }
 
-
-        protected abstract void run() throws Throwable;
+        protected abstract void run(final JvmComm comm) throws Throwable;
 
     }
 
