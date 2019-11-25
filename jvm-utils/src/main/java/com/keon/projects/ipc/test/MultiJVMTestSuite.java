@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestExecutionExceptionHandler;
+import static com.keon.projects.ipc.LogManager.*;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
@@ -49,7 +50,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
                     comm.write(JvmComm.SHUTDOWN_JVM, "true");
                 } finally {
                     if (jvm != null && !jvm.awaitTermination()) {
-                        log.severe("Failed to properly terminate JVM running " + jvm.getMainClass().getName());
+                        error(log, "Failed to properly terminate JVM running {0}", jvm.getMainClass().getName());
                     }
                 }
             }
@@ -60,7 +61,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
         for (int i = 0; ; ++i) {
             try {
                 Files.deleteIfExists(comm.commChannelPath);
-                log.info(comm.commChannelPath.toString() + " deleted after " + i + " retries");
+                log(log, "{0} deleted after {1} retries", comm.commChannelPath.toString(), i);
                 break;
             } catch (final AccessDeniedException e) {
                 if (i == 4)
@@ -112,7 +113,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
         }
 
         public static void main(String[] args) {
-            log.info("JVM main method called");
+            log(log, "JVM main method called");
             final JvmComm comm;
             final RemoteJvm jvm;
             if (args.length == 0) {
@@ -126,7 +127,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
                         }
                     };
                 } catch (final Throwable t) {
-                    log.log(Level.SEVERE, "Error getting a lambda executor", t);
+                    error(log, "Error getting a lambda executor", t);
                     System.exit(-2);
                     return;
                 }
@@ -135,7 +136,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
                     comm = new JvmComm(COMM_CHANNEL);
                     jvm = (RemoteJvm) Class.forName(args[0]).newInstance();
                 } catch (final LinkageError | ClassNotFoundException | InstantiationException | IllegalAccessException | IOException e) {
-                    log.log(Level.SEVERE, "JVM could not instantiate " + args[0], e);
+                    error(log, "JVM could not instantiate {0}", e, args[0]);
                     System.exit(-1);
                     return;
                 }
@@ -148,7 +149,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
                 log.log(Level.SEVERE, jvm.getClass().getName() + ": " + t.getMessage(), t);
                 exitCode = 1;
             } finally {
-                log.info(jvm.getClass().getName() + " shutting down...");
+                log(log, "{0} shutting down...", jvm.getClass().getName());
                 System.exit(exitCode);
             }
         }

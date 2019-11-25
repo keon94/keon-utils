@@ -1,6 +1,5 @@
 package com.keon.projects.ipc;
 
-import com.esotericsoftware.minlog.Log;
 import sun.reflect.Reflection;
 
 import java.io.PrintWriter;
@@ -34,9 +33,9 @@ public class LogManager {
             return logger;
         }
         if (JvmContext.isRemoteContext()) {
-            return getLogger(clazz.getName(), new CustomFormatter(clazz.getName(),"REMOTE"));
+            return getLogger(clazz.getName(), new CustomFormatter(clazz.getName(), "REMOTE"));
         }
-        return getLogger(clazz.getName(), new CustomFormatter(clazz.getName(),"LOCAL"));
+        return getLogger(clazz.getName(), new CustomFormatter(clazz.getName(), "LOCAL"));
     }
 
     private static Logger getLogger(final String clazz, final CustomFormatter formatter) {
@@ -101,9 +100,13 @@ public class LogManager {
         }
 
         private StackTraceElement getCallSite() {
-            for(final StackTraceElement e :Thread.currentThread().getStackTrace()) {
-                if(e.getClassName().contains(clazz)) {
-                    return e;
+            final StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+            for (int i = 0; i < stack.length; ++i) {
+                if (stack[i].getClassName().equals(Logger.class.getName())) {
+                    if (stack[i + 1].getClassName().equals(LogManager.class.getName()))
+                        return stack[i + 2];
+                    else if (!stack[i + 1].getClassName().equals(Logger.class.getName()))
+                        return stack[i + 1];
                 }
             }
             return null;
