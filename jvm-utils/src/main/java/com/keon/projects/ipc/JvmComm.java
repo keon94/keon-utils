@@ -8,10 +8,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
@@ -103,39 +105,6 @@ public class JvmComm {
     }
 
     /**
-     * Removes the given keys from the "store"
-     * TODO: Merge this into getInternal and modify its API
-     *
-     * @param keys
-     * @throws IOException
-     */
-    public <T> void removeKeys(final List<String> keys) throws IOException {
-        log(log, "Beginning to remove keys: {0}", keys);
-        final KryoSerializer serializer = new KryoSerializer();
-        Map<String, T> existingMap = null;
-        try (final FileChannel channel = getChannel()) {
-            final MappedByteBuffer mmapedBuffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, MAX_BUFFER_MEMORY_BYTES);
-            byte[] existingBytes = new byte[mmapedBuffer.limit()];
-            mmapedBuffer.get(existingBytes);
-            try {
-                existingMap = serializer.deserialize(existingBytes);
-            } catch (final Exception e) {
-                existingMap = new HashMap<>(); //thrown when there's nothing to deserialize. can improve this later
-            }
-            for (final String key : keys) {
-                existingMap.remove(key);
-            }
-            mmapedBuffer.position(0);
-            mmapedBuffer.put(new byte[mmapedBuffer.limit()]); //reset the buffer
-            mmapedBuffer.position(0);
-            mmapedBuffer.put(serializer.serialize(existingMap));
-        } catch (final IOException e) {
-            error(log, "Existing Keys: {0}", e, Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
-        }
-        log(log, "Finished removing keys: \"{0}\"", keys);
-    }
-
-    /**
      * Waits until a key is available in the "store", up to a fixed timeout period
      *
      * @param key
@@ -150,9 +119,27 @@ public class JvmComm {
     public <T> T get(final String key, final long timeout, final TimeUnit unit) throws IOException, TimeoutException, InterruptedException {
         log(log, "Beginning waiting to receive key \"{0}\"", key);
         try {
-            return getInternal(key, timeout, unit, false);
+            return (T) getOrRemove(Collections.singleton(key), timeout, unit, false).get(key);
         } finally {
             log(log, "Finished waiting to receive key: \"{0}\"", key);
+        }
+    }
+
+    public <T> Map<String, T> get(final Collection<String> keys) throws IOException, TimeoutException, InterruptedException {
+        log(log, "Beginning waiting to receive keys \"{0}\"", keys);
+        try {
+            return getOrRemove(new HashSet<>(keys), DEFAULT_AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS, false);
+        } finally {
+            log(log, "Finished waiting to receive keys: \"{0}\"", keys);
+        }
+    }
+
+    public <T> Map<String, T> get(final Collection<String> keys, final long timeout, final TimeUnit unit) throws IOException, TimeoutException, InterruptedException {
+        log(log, "Beginning waiting to receive keys \"{0}\"", keys);
+        try {
+            return getOrRemove(new HashSet<>(keys), timeout, unit, false);
+        } finally {
+            log(log, "Finished waiting to receive key: \"{0}\"", keys);
         }
     }
 
@@ -160,15 +147,29 @@ public class JvmComm {
         return remove(key, DEFAULT_AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
+    public <T> Map<String, T> remove(final Collection<String> keys) throws IOException, TimeoutException, InterruptedException {
+        return remove(keys, DEFAULT_AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    }
+
     public <T> T remove(final String key, final long timeout, final TimeUnit unit) throws IOException, TimeoutException, InterruptedException {
         log(log, "Beginning to remove key: {0}", key);
-        final T result = getInternal(key, timeout, unit, true);
+        final T result = (T) getOrRemove(Collections.singleton(key), timeout, unit, true).get(key);
         log(log, "Finished removing key: \"{0}\"", key);
         return result;
     }
 
-    private <T> T getInternal(final String key, final long timeout, final TimeUnit unit, final boolean remove) throws TimeoutException, InterruptedException, IOException {
+    public <T> Map<String, T> remove(final Collection<String> keys, final long timeout, final TimeUnit unit) throws IOException, TimeoutException, InterruptedException {
+        log(log, "Beginning to remove keys: {0}", keys);
+        final Map<String, T> result = getOrRemove(new HashSet<>(keys), timeout, unit, true);
+        log(log, "Finished removing key: \"{0}\"", keys);
+        return result;
+    }
+
+    private <T> Map<String, T> getOrRemove(final Set<String> keys, final long timeout, final TimeUnit unit, final boolean remove) throws TimeoutException, InterruptedException, IOException {
+        if (keys.isEmpty())
+            return new HashMap<>();
         final KryoSerializer serializer = new KryoSerializer();
+        final Map<String, T> results = new HashMap<>();
         final long begin = System.currentTimeMillis();
         while (true) {
             byte[] existingBytes = null;
@@ -176,29 +177,44 @@ public class JvmComm {
                 final MappedByteBuffer mmapedBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, MAX_BUFFER_MEMORY_BYTES);
                 existingBytes = new byte[mmapedBuffer.limit()];
                 mmapedBuffer.get(existingBytes);
-            }
-            Map<String, T> existingMap = null;
-            existingMap = serializer.deserialize(existingBytes);
-            if (existingMap == null) {
-                existingMap = new HashMap<>();
-            } else if (existingMap.containsKey(key)) {
-                if (remove) {
-                    return existingMap.remove(key);
+                final Map<String, T> existingMap;
+                {
+                    Map<String, T> temp = serializer.deserialize(existingBytes);
+                    existingMap = temp == null ? new HashMap<>() : temp;
                 }
-                return existingMap.get(key);
-            }
-            if (existingMap != null && existingMap.containsKey(TERMINATE_JVM)) {
-                if (!SHUTDOWN_JVM.equals(key)) {
+                if (!existingMap.isEmpty()) {
+                    keys.forEach(k -> existingMap.entrySet().stream().filter(e -> k.equals(e.getKey())).forEach(e -> results.put(e.getKey(), e.getValue())));
+                    if (remove) {
+                        existingMap.entrySet().removeIf(e -> results.containsKey(e.getKey()));
+                        mmapedBuffer.position(0);
+                        mmapedBuffer.put(new byte[mmapedBuffer.limit()]); //reset the buffer
+                        mmapedBuffer.position(0);
+                        mmapedBuffer.put(serializer.serialize(existingMap));
+                        if (!results.isEmpty()) {
+                            log(log, "Removed keys {0}", results.keySet());
+                        }
+                    } else {
+                        if (!results.isEmpty()) {
+                            log(log, "Received keys {0}", results.keySet());
+                        }
+                    }
+                    if (results.keySet().equals(keys)) {
+                        return results;
+                    }
+                }
+                if (existingMap.containsKey(TERMINATE_JVM)) {
+                    if (!keys.contains(SHUTDOWN_JVM)) {
+                        error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
+                        throw new IllegalStateException("Key \"" + TERMINATE_JVM + "\" detected while not waiting for key \"" + SHUTDOWN_JVM + "\"!");
+                    }
+                    error(log, "Key \"{0}\" detected while waiting for key \"{1}\"! Exiting wait...", TERMINATE_JVM, SHUTDOWN_JVM);
                     error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
-                    throw new IllegalStateException("Key \"" + TERMINATE_JVM + "\" detected while not waiting for key \"" + SHUTDOWN_JVM + "\"!");
+                    return null;
                 }
-                error(log, "Key \"{0}\" detected while waiting for key \"{1}\"! Exiting wait...", TERMINATE_JVM, SHUTDOWN_JVM);
-                error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
-                return null;
-            }
-            if (System.currentTimeMillis() - begin > unit.toMillis(timeout)) {
-                error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
-                throw new TimeoutException("Timed out waiting for key \"" + key + "\" to become available");
+                if (results.size() < keys.size() && System.currentTimeMillis() - begin > unit.toMillis(timeout)) {
+                    error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
+                    throw new TimeoutException("Timed out waiting for all keys in \"" + keys + "\" to become available. Only received: " + results.keySet());
+                }
             }
             Thread.sleep(100);
         }
