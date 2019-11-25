@@ -1,5 +1,8 @@
 package com.keon.projects.ipc;
 
+import com.keon.projects.ipc.misc.KryoSerializer;
+import com.keon.projects.ipc.misc.LogManager;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.MappedByteBuffer;
@@ -17,9 +20,10 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
-import static com.keon.projects.ipc.LogManager.error;
-import static com.keon.projects.ipc.LogManager.log;
+import static com.keon.projects.ipc.misc.LogManager.error;
+import static com.keon.projects.ipc.misc.LogManager.log;
 
 public class JvmComm {
 
@@ -76,18 +80,15 @@ public class JvmComm {
         final KryoSerializer serializer = new KryoSerializer();
         Map<String, T> existingMap = null;
         final Map<String, T> previousMap = new HashMap<>();
+        boolean success = false;
         try (final FileChannel channel = getChannel()) {
             log(log, "Beginning to write key-values in {0}", Arrays.toString(entries.entrySet().toArray()));
             final MappedByteBuffer mmapedBuffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, MAX_BUFFER_MEMORY_BYTES);
             byte[] existingBytes = new byte[mmapedBuffer.limit()];
             mmapedBuffer.get(existingBytes);
-            try {
-                existingMap = serializer.deserialize(existingBytes);
-                if (existingMap == null) {
-                    existingMap = new HashMap<>();
-                }
-            } catch (final Exception e) {
-                existingMap = new HashMap<>(); //thrown when there's nothing to deserialize. can improve this later
+            existingMap = serializer.deserialize(existingBytes);
+            if (existingMap == null) {
+                existingMap = new HashMap<>();
             }
             for (final Map.Entry<String, T> e : entries.entrySet()) {
                 final T previous = existingMap.put(e.getKey(), e.getValue());
@@ -97,9 +98,13 @@ public class JvmComm {
             mmapedBuffer.put(new byte[mmapedBuffer.limit()]); //reset the buffer
             mmapedBuffer.position(0);
             mmapedBuffer.put(serializer.serialize(existingMap));
+            success = true;
         } catch (final IOException e) {
             error(log, "Existing Keys: {0}", e, Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
             throw e;
+        } finally {
+            if (success)
+                log(log, "Finished writing key-values in {0}", Arrays.toString(entries.entrySet().toArray()));
         }
         return previousMap;
     }
@@ -139,7 +144,7 @@ public class JvmComm {
         try {
             return getOrRemove(new HashSet<>(keys), timeout, unit, false);
         } finally {
-            log(log, "Finished waiting to receive key: \"{0}\"", keys);
+            log(log, "Finished waiting to receive keys: \"{0}\"", keys);
         }
     }
 
@@ -161,7 +166,7 @@ public class JvmComm {
     public <T> Map<String, T> remove(final Collection<String> keys, final long timeout, final TimeUnit unit) throws IOException, TimeoutException, InterruptedException {
         log(log, "Beginning to remove keys: {0}", keys);
         final Map<String, T> result = getOrRemove(new HashSet<>(keys), timeout, unit, true);
-        log(log, "Finished removing key: \"{0}\"", keys);
+        log(log, "Finished removing keys: \"{0}\"", keys);
         return result;
     }
 
@@ -174,7 +179,7 @@ public class JvmComm {
         while (true) {
             byte[] existingBytes = null;
             try (final FileChannel channel = getChannel()) {
-                final MappedByteBuffer mmapedBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, MAX_BUFFER_MEMORY_BYTES);
+                final MappedByteBuffer mmapedBuffer = remove ? channel.map(FileChannel.MapMode.READ_WRITE, 0, MAX_BUFFER_MEMORY_BYTES) : channel.map(FileChannel.MapMode.READ_ONLY, 0, MAX_BUFFER_MEMORY_BYTES);
                 existingBytes = new byte[mmapedBuffer.limit()];
                 mmapedBuffer.get(existingBytes);
                 final Map<String, T> existingMap;
@@ -183,19 +188,22 @@ public class JvmComm {
                     existingMap = temp == null ? new HashMap<>() : temp;
                 }
                 if (!existingMap.isEmpty()) {
-                    keys.forEach(k -> existingMap.entrySet().stream().filter(e -> k.equals(e.getKey())).forEach(e -> results.put(e.getKey(), e.getValue())));
+                    final Set<String> newKeys = new HashSet<>();
+                    keys.forEach(k -> existingMap.entrySet().stream()
+                            .filter(e -> k.equals(e.getKey()))
+                            .forEach(e -> newKeys.add(results.put(e.getKey(), e.getValue()) == null ? e.getKey() : null)));
                     if (remove) {
                         existingMap.entrySet().removeIf(e -> results.containsKey(e.getKey()));
                         mmapedBuffer.position(0);
                         mmapedBuffer.put(new byte[mmapedBuffer.limit()]); //reset the buffer
                         mmapedBuffer.position(0);
                         mmapedBuffer.put(serializer.serialize(existingMap));
-                        if (!results.isEmpty()) {
-                            log(log, "Removed keys {0}", results.keySet());
+                        if (!newKeys.isEmpty()) {
+                            log(log, "Removed keys {0}", newKeys);
                         }
                     } else {
-                        if (!results.isEmpty()) {
-                            log(log, "Received keys {0}", results.keySet());
+                        if (!newKeys.isEmpty()) {
+                            log(log, "Received keys {0}", newKeys);
                         }
                     }
                     if (results.keySet().equals(keys)) {
@@ -212,8 +220,9 @@ public class JvmComm {
                     return null;
                 }
                 if (results.size() < keys.size() && System.currentTimeMillis() - begin > unit.toMillis(timeout)) {
-                    error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
-                    throw new TimeoutException("Timed out waiting for all keys in \"" + keys + "\" to become available. Only received: " + results.keySet());
+                    error(log, "Existing Keys in channel: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
+                    final Set<String> remaining = keys.stream().filter(k -> !results.keySet().contains(k)).collect(Collectors.toSet());
+                    throw new TimeoutException("Timed out waiting for remaining keys in \"" + remaining + "\" to become available");
                 }
             }
             Thread.sleep(100);

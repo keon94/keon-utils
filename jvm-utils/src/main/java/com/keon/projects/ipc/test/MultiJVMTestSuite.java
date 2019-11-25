@@ -2,7 +2,7 @@ package com.keon.projects.ipc.test;
 
 import com.keon.projects.ipc.JvmComm;
 import com.keon.projects.ipc.JvmContext;
-import com.keon.projects.ipc.LogManager;
+import com.keon.projects.ipc.misc.LogManager;
 import com.keon.projects.ipc.process.JavaProcess;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,19 +19,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.keon.projects.ipc.LogManager.error;
-import static com.keon.projects.ipc.LogManager.log;
+import static com.keon.projects.ipc.misc.LogManager.error;
+import static com.keon.projects.ipc.misc.LogManager.log;
 
 @ExtendWith(MultiJVMTestSuite.class)
 public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
 
-    protected static final Logger log = LogManager.getLogger();
     private static final String COMM_CHANNEL = "comm_channel";
+    protected static final Logger log = LogManager.getLogger();
 
-    protected final JvmComm comm;
     private final List<JavaProcess> jvmPool = new ArrayList<>();
+    protected final JvmComm comm;
 
-    public MultiJVMTestSuite() {
+    protected MultiJVMTestSuite() {
         try {
             this.comm = new JvmComm(COMM_CHANNEL);
         } catch (IOException e) {
@@ -45,7 +45,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
     }
 
     @AfterEach
-    public void after() throws IOException {
+    public void after() throws IOException, InterruptedException {
         try {
             for (final JavaProcess jvm : jvmPool) {
                 try {
@@ -66,8 +66,11 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
                 log(log, "{0} deleted after {1} retries", comm.commChannelPath.toString(), i);
                 break;
             } catch (final AccessDeniedException e) {
-                if (i == 4)
-                    throw e;
+                if (i == 10) {
+                    error(log, "{0} could not be deleted after {1} retries", e, comm.commChannelPath.toString(), i);
+                    break;
+                }
+                Thread.sleep(100);
             }
         }
     }

@@ -1,5 +1,6 @@
-package com.keon.projects.ipc;
+package com.keon.projects.ipc.misc;
 
+import com.keon.projects.ipc.JvmContext;
 import sun.reflect.Reflection;
 
 import java.io.PrintWriter;
@@ -85,6 +86,7 @@ public class LogManager {
             final StackTraceElement e = getCallSite();
             final String clazz = e == null ? record.getSourceClassName() : e.getClassName();
             final String method = e == null ? record.getSourceMethodName() : e.getMethodName();
+            final Integer line = e == null ? null : e.getLineNumber();
             return MessageFormat.format(
                     "[" + context + "][{0}][PID-{1}][Thread-{2}][{3}.{4}({5})]" +
                             ":\n  {6} - {7}{8}\n",
@@ -93,7 +95,7 @@ public class LogManager {
                     Thread.currentThread().getName(),
                     clazz,
                     method,
-                    formatArguments(clazz, method),
+                    formatArguments(clazz, method, line),
                     record.getLevel(),
                     super.formatMessage(record),
                     formatThrowable(record.getThrown()));
@@ -129,8 +131,8 @@ public class LogManager {
             return sw.toString();
         }
 
-        private static String formatArguments(final String clazz, final String method) {
-            return "*"; //Nothing we can do to infer the arg signature
+        private static String formatArguments(final String clazz, final String method, final Integer line) {
+            return line == null ? "*" : "L" + line; //Nothing we can do to infer the arg signature
         }
     }
 
