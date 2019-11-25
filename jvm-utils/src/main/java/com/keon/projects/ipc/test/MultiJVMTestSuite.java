@@ -1,15 +1,14 @@
 package com.keon.projects.ipc.test;
 
-import com.keon.projects.ipc.JavaProcess;
 import com.keon.projects.ipc.JvmComm;
 import com.keon.projects.ipc.JvmContext;
 import com.keon.projects.ipc.LogManager;
+import com.keon.projects.ipc.process.JavaProcess;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestExecutionExceptionHandler;
-import static com.keon.projects.ipc.LogManager.*;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
@@ -19,6 +18,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static com.keon.projects.ipc.LogManager.error;
+import static com.keon.projects.ipc.LogManager.log;
 
 @ExtendWith(MultiJVMTestSuite.class)
 public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
@@ -47,7 +49,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
         try {
             for (final JavaProcess jvm : jvmPool) {
                 try {
-                    comm.write(JvmComm.SHUTDOWN_JVM, "true");
+                    comm.put(JvmComm.SHUTDOWN_JVM, "true");
                 } finally {
                     if (jvm != null && !jvm.awaitTermination()) {
                         error(log, "Failed to properly terminate JVM running {0}", jvm.getMainClass().getName());
@@ -74,7 +76,7 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
         return start(clazz, 30, TimeUnit.SECONDS);
     }
 
-    protected JavaProcess start(final RemoteJvm.JvmRunner runner) throws Exception {
+    protected JavaProcess start(final JvmComm.XJvmConsumer<JvmComm> runner) throws Exception {
         return start(runner, 30, TimeUnit.SECONDS);
     }
 
@@ -85,17 +87,17 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
         return jvm;
     }
 
-    protected JavaProcess start(final RemoteJvm.JvmRunner runner, final long timeout, final TimeUnit unit) throws Exception {
+    protected JavaProcess start(final JvmComm.XJvmConsumer<JvmComm> runner, final long timeout, final TimeUnit unit) throws Exception {
         final JavaProcess jvm = new JavaProcess(RemoteJvm.class);
-        jvm.timeout(timeout, unit).exec();
+        jvm.timeout(timeout, unit).exec(JvmComm.LAMBDA_RUNNER + (jvmPool.size() + 1));
         jvmPool.add(jvm);
-        comm.writeLambda(JvmComm.LAMBDA_RUNNER, runner);
+        comm.putLambda(JvmComm.LAMBDA_RUNNER + jvmPool.size(), runner);
         return jvm;
     }
 
     @Override
     public void handleTestExecutionException(ExtensionContext context, Throwable throwable) throws Throwable {
-        comm.write(JvmComm.TERMINATE_JVM, "true");
+        comm.put(JvmComm.TERMINATE_JVM, "true");
         throw throwable;
     }
 
@@ -104,22 +106,14 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
      */
     public static abstract class RemoteJvm extends JvmContext.RemoteContext {
 
-        protected static final Logger log = LogManager.getLogger();
-
-        public interface JvmRunner extends JvmComm.XJvmConsumer<JvmComm> {
-            default Logger getLogger() {
-                return log;
-            }
-        }
-
         public static void main(String[] args) {
             log(log, "JVM main method called");
             final JvmComm comm;
             final RemoteJvm jvm;
-            if (args.length == 0) {
+            if (args[0].startsWith(JvmComm.LAMBDA_RUNNER)) {
                 try {
                     comm = new JvmComm(COMM_CHANNEL);
-                    final JvmRunner runner = comm.waitFor(JvmComm.LAMBDA_RUNNER);
+                    final JvmComm.XJvmConsumer<JvmComm> runner = comm.get(args[0]);
                     jvm = new RemoteJvm() {
                         @Override
                         protected void run(JvmComm comm) throws Throwable {
@@ -144,14 +138,14 @@ public class MultiJVMTestSuite implements TestExecutionExceptionHandler {
             int exitCode = 0; // zero means success
             try {
                 jvm.run(comm);
-                comm.waitFor(JvmComm.SHUTDOWN_JVM);
+                comm.get(JvmComm.SHUTDOWN_JVM);
             } catch (final Throwable t) {
                 log.log(Level.SEVERE, jvm.getClass().getName() + ": " + t.getMessage(), t);
                 exitCode = 1;
             } finally {
                 log(log, "{0} shutting down...", jvm.getClass().getName());
-                System.exit(exitCode);
             }
+            System.exit(exitCode);
         }
 
         protected abstract void run(final JvmComm comm) throws Throwable;

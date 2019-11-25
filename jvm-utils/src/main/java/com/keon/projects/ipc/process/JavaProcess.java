@@ -1,5 +1,6 @@
-package com.keon.projects.ipc;
+package com.keon.projects.ipc.process;
 
+import com.keon.projects.ipc.LogManager;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
 import org.zeroturnaround.exec.StartedProcess;
