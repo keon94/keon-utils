@@ -26,7 +26,7 @@ public abstract class SharedThreadLocal<T> {
             m = new HashMap<>();
         }
         m.put(this, t);
-        for (final var htid : getThreadHierrarchy(tid)) {
+        for (final var htid : getThreadHierarchy(tid)) {
             LOCALS.put(htid, m);
         }
     }
@@ -41,23 +41,23 @@ public abstract class SharedThreadLocal<T> {
 
     protected abstract boolean inheritLocals();
 
-    protected void getThreadHierrarchy(final Long root, final List<Long> all) {
-        final List<Long> children = HierrarchialThreads.getChildren(root);
+    protected void getThreadHierarchy(final Long root, final List<Long> all) {
+        final List<Long> children = HierarchicalThreads.getChildren(root);
         if (children.isEmpty()) {
             all.add(root);
         } else {
             for (final Long child : children) {
-                getThreadHierrarchy(child, all);
+                getThreadHierarchy(child, all);
             }
         }
     }
     
-    private List<Long> getThreadHierrarchy(final long tid) {
-        final List<Long> hierrarchy = new ArrayList<>();
+    private List<Long> getThreadHierarchy(final long tid) {
+        final List<Long> hierarchy = new ArrayList<>();
         final Long root = getRoot(tid);
         if (root != null)
-            getThreadHierrarchy(root, hierrarchy);
-        return hierrarchy;
+            getThreadHierarchy(root, hierarchy);
+        return hierarchy;
     }
 
     static void inheritLocals(final long tid, final long parent) {

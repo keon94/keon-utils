@@ -33,15 +33,16 @@ public class JvmComm {
 
     private static final long MAX_BUFFER_MEMORY_BYTES = 4096;
     private static final long DEFAULT_AWAIT_TIMEOUT_SECONDS = 30;
+    private static final Logger log = LogManager.getLogger(JvmComm.class);
 
-    public final String commChannelName;
-    public final Path commChannelPath;
+    private final Path commChannelPath;
 
-    private static final Logger log = LogManager.getLogger();
+    public JvmComm(final String sharedChannelName) {
+        this.commChannelPath = Paths.get(System.getProperty("java.io.tmpdir") + "/" + sharedChannelName + ".tmp");
+    }
 
-    public JvmComm(final String sharedChannelName) throws IOException {
-        this.commChannelName = sharedChannelName;
-        commChannelPath = Paths.get(System.getProperty("java.io.tmpdir") + "/" + sharedChannelName + ".tmp");
+    public Path getChannelPath() {
+        return this.commChannelPath;
     }
 
     //========================= Cross JVM communication methods ======================================================
@@ -212,16 +213,16 @@ public class JvmComm {
                 }
                 if (existingMap.containsKey(TERMINATE_JVM)) {
                     if (!keys.contains(SHUTDOWN_JVM)) {
-                        error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
+                        error(log, "Existing Keys: {0}", Arrays.toString(existingMap.keySet().toArray()));
                         throw new IllegalStateException("Key \"" + TERMINATE_JVM + "\" detected while not waiting for key \"" + SHUTDOWN_JVM + "\"!");
                     }
                     error(log, "Key \"{0}\" detected while waiting for key \"{1}\"! Exiting wait...", TERMINATE_JVM, SHUTDOWN_JVM);
-                    error(log, "Existing Keys: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
+                    error(log, "Existing Keys: {0}", Arrays.toString(existingMap.keySet().toArray()));
                     return null;
                 }
                 if (results.size() < keys.size() && System.currentTimeMillis() - begin > unit.toMillis(timeout)) {
-                    error(log, "Existing Keys in channel: {0}", Arrays.toString(existingMap == null ? new Object[]{""} : existingMap.keySet().toArray()));
-                    final Set<String> remaining = keys.stream().filter(k -> !results.keySet().contains(k)).collect(Collectors.toSet());
+                    error(log, "Existing Keys in channel: {0}", Arrays.toString(existingMap.keySet().toArray()));
+                    final Set<String> remaining = keys.stream().filter(k -> !results.containsKey(k)).collect(Collectors.toSet());
                     throw new TimeoutException("Timed out waiting for remaining keys in \"" + remaining + "\" to become available");
                 }
             }

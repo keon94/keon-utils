@@ -4,7 +4,7 @@ public class LocallySharedThreadLocal<T> extends SharedThreadLocal<T> {
 
     @Override
     protected Long getRoot(long tid) {
-        final Long root = HierrarchialThreads.getParent(tid);
+        final Long root = HierarchicalThreads.getParent(tid);
         if (root == -1) {
             return tid;
         } else if (root == null) {

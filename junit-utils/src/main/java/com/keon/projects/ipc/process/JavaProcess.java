@@ -25,7 +25,7 @@ public class JavaProcess {
     private long timeoutSeconds = 30;
 
     private static int DEBUG_PORT = 8100;
-    private static final Logger log = LogManager.getLogger();
+    private static final Logger log = LogManager.getLogger(JavaProcess.class);
 
     /**
      * @param klass The class that the new JVM will execute (must have a main method)

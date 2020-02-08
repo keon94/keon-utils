@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class HierrarchialThreads {
+public class HierarchicalThreads {
 
     private static final Map<Long, Relation> THREAD_RELATIONS = new HashMap<>();
 

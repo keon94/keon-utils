@@ -5,21 +5,13 @@ import java.util.concurrent.ThreadFactory;
 
 import org.junit.jupiter.api.Test;
 
-import com.keon.projects.threading.GloballySharedThreadLocal;
-import com.keon.projects.threading.HierrarchialThreads;
-
 public class GloballySharedThreadLocalTest {
 
     @Test
     public void test() throws Exception {
-        final var exec = Executors.newFixedThreadPool(3, new ThreadFactory() {
-            @Override
-            public Thread newThread(Runnable r) {
-                return HierrarchialThreads.register(Executors.defaultThreadFactory().newThread(r));
-            }
-        });
+        final var exec = Executors.newFixedThreadPool(3, r -> HierarchicalThreads.register(Executors.defaultThreadFactory().newThread(r)));
 
-        HierrarchialThreads.register(Thread.currentThread());
+        HierarchicalThreads.register(Thread.currentThread());
 
         final var t = new GloballySharedThreadLocal<String>();
         final var t2 = new GloballySharedThreadLocal<String>();

@@ -5,9 +5,6 @@ import java.util.concurrent.ThreadFactory;
 
 import org.junit.jupiter.api.Test;
 
-import com.keon.projects.threading.HierrarchialThreads;
-import com.keon.projects.threading.LocallySharedThreadLocal;
-
 public class LocallySharedThreadLocalTest {
     
     @Test
@@ -15,11 +12,11 @@ public class LocallySharedThreadLocalTest {
         final var exec = Executors.newFixedThreadPool(3, new ThreadFactory() {
             @Override
             public Thread newThread(Runnable r) {
-                return HierrarchialThreads.register(Executors.defaultThreadFactory().newThread(r));
+                return HierarchicalThreads.register(Executors.defaultThreadFactory().newThread(r));
             }
         });
 
-        HierrarchialThreads.register(Thread.currentThread());
+        HierarchicalThreads.register(Thread.currentThread());
 
         final var t = new LocallySharedThreadLocal<String>();
         final var t2 = new LocallySharedThreadLocal<String>();

@@ -2,11 +2,8 @@ package com.keon.projects.threading;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import com.keon.projects.threading.DownStreamThreadLocal;
 
 import org.junit.jupiter.api.Test;
-
-import com.keon.projects.threading.HierrarchialThreads;
 
 public class DownStreamThreadLocalTest {
     @Test
@@ -14,11 +11,11 @@ public class DownStreamThreadLocalTest {
         final var exec = Executors.newFixedThreadPool(3, new ThreadFactory() {
             @Override
             public Thread newThread(Runnable r) {
-                return HierrarchialThreads.register(Executors.defaultThreadFactory().newThread(r));
+                return HierarchicalThreads.register(Executors.defaultThreadFactory().newThread(r));
             }
         });
 
-        HierrarchialThreads.register(Thread.currentThread());
+        HierarchicalThreads.register(Thread.currentThread());
 
         final var t = new DownStreamThreadLocal<String>();
         final var t2 = new DownStreamThreadLocal<String>();

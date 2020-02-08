@@ -6,7 +6,7 @@ public class GloballySharedThreadLocal<T> extends SharedThreadLocal<T> {
     protected Long getRoot(long tid) {
         Long root = null;
         while (true) {
-            root = HierrarchialThreads.getParent(tid);
+            root = HierarchicalThreads.getParent(tid);
             if (root == -1) {
                 return tid;
             } else if(root == null) {

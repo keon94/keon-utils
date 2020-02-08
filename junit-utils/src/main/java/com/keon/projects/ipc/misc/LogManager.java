@@ -1,7 +1,6 @@
 package com.keon.projects.ipc.misc;
 
 import com.keon.projects.ipc.JvmContext;
-import sun.reflect.Reflection;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -24,19 +23,15 @@ public class LogManager {
     private static final SimpleDateFormat DF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private static final String PID = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
 
-    public static Logger getLogger() {
-        return getLogger(Reflection.getCallerClass(2));
-    }
-
     public static Logger getLogger(final Class<?> clazz) {
         final Logger logger = java.util.logging.LogManager.getLogManager().getLogger(clazz.getName());
         if (logger != null) {
             return logger;
         }
         if (JvmContext.isRemoteContext()) {
-            return getLogger(clazz.getName(), new CustomFormatter(clazz.getName(), "REMOTE"));
+            return getLogger(clazz.getName(), new CustomFormatter("REMOTE"));
         }
-        return getLogger(clazz.getName(), new CustomFormatter(clazz.getName(), "LOCAL"));
+        return getLogger(clazz.getName(), new CustomFormatter("LOCAL"));
     }
 
     private static Logger getLogger(final String clazz, final CustomFormatter formatter) {
@@ -74,11 +69,9 @@ public class LogManager {
     private static class CustomFormatter extends Formatter {
 
         private final String context;
-        private final String clazz;
 
-        private CustomFormatter(String clazz, String context) {
+        private CustomFormatter(final String context) {
             this.context = context;
-            this.clazz = clazz;
         }
 
         @Override
