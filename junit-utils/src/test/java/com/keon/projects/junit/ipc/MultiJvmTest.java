@@ -3,8 +3,8 @@ package com.keon.projects.junit.ipc;
 import com.keon.projects.ipc.JvmComm.XJvmFunction;
 import com.keon.projects.ipc.JvmComm.XJvmSupplier;
 import com.keon.projects.ipc.misc.LogManager;
-import com.keon.projects.junit.ipc.JvmAccessor;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -21,6 +21,7 @@ import java.util.stream.IntStream;
 import static com.keon.projects.junit.ipc.JvmAccessor.logger;
 
 @ExtendWith(JvmAccessor.LifeCycleManager.class)
+@Disabled
 public class MultiJvmTest {
 
     @RegisterExtension
