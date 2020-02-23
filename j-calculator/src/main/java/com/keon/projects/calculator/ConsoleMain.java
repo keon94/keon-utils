@@ -9,7 +9,7 @@ public class ConsoleMain implements IMain {
     @Override
     public void main(final String... args) {
         System.out.println("Press q to quit at any time");
-        try (final var console = new ConsoleInputManager(System.in, System.out)) {
+        try (final ConsoleInputManager console = new ConsoleInputManager(System.in, System.out)) {
             while (true) {
                 System.out.print(ConsoleInputManager.LINE_BEGIN);
                 final String input = console.getRequestedInput();

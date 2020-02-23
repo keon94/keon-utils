@@ -1,12 +1,12 @@
 package com.keon.projects.calculator.logic;
 
-import static com.keon.projects.calculator.logic.Calculator.FNS;
-import static com.keon.projects.calculator.logic.Calculator.OPS;
-
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Stack;
+
+import static com.keon.projects.calculator.logic.Calculator.FNS;
+import static com.keon.projects.calculator.logic.Calculator.OPS;
 
 class Evaluator {
 
@@ -65,7 +65,7 @@ class Evaluator {
         int i = 0;
         String prevSign = null;
         while (i < args.size()) {
-            var arg = args.get(i);
+            Object arg = args.get(i);
             if (arg instanceof String) {
                 if (arg.equals(Operator.MINUS) || arg.equals(Operator.PLUS)) {
                     if (prevSign == null) {

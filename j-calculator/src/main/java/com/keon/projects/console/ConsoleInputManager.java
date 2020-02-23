@@ -1,5 +1,10 @@
 package com.keon.projects.console;
 
+import org.jnativehook.GlobalScreen;
+import org.jnativehook.NativeHookException;
+import org.jnativehook.keyboard.NativeKeyEvent;
+import org.jnativehook.keyboard.NativeKeyListener;
+
 import java.io.Closeable;
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -11,17 +16,12 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.jnativehook.GlobalScreen;
-import org.jnativehook.NativeHookException;
-import org.jnativehook.keyboard.NativeKeyEvent;
-import org.jnativehook.keyboard.NativeKeyListener;
-
 public class ConsoleInputManager implements Closeable {
 
     public static final String LINE_BEGIN = "> ";
 
     @SuppressWarnings("serial")
-    private final List<String> inputHistory = new ArrayList<>() {
+    private final List<String> inputHistory = new ArrayList<String>() {
         public boolean add(final String str) {
             if (isEmpty() || !super.get(size() - 1).equals(str)) {
                 super.add(str);
