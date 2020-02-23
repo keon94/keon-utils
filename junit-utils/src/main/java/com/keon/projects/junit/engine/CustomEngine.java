@@ -1,6 +1,5 @@
 package com.keon.projects.junit.engine;
 
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.engine.JupiterTestEngine;
 import org.junit.platform.engine.EngineDiscoveryRequest;
 import org.junit.platform.engine.ExecutionRequest;
@@ -53,8 +52,8 @@ public class CustomEngine implements TestEngine {
                     .addClassLoader(URLClassLoader.newInstance(new URL[]{testClassesURL},ClasspathHelper.staticClassLoader()))
                     .forPackages("")
                     .setScanners(new SubTypesScanner(false), new TypeAnnotationsScanner()))
-                    .getTypesAnnotatedWith(ExtendWith.class, true);
-            final Set<Class<?>> sorted = new ClassSorter(types).getSorted();
+                    .getTypesAnnotatedWith(CustomRunner.class, true);
+            final Set<Class<?>> sorted = new SuiteSorter(types).getSorted();
             return sorted.stream().map(DiscoverySelectors::selectClass).toArray(ClassSelector[]::new);
         } catch (final Exception e) {
             throw new RuntimeException(e);

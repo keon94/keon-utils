@@ -17,5 +17,3 @@ public class JupiterSkipper implements ExecutionCondition {
     }
 
 }
-
-

@@ -1,10 +1,10 @@
 package com.keon.projects.junit.parallel;
 
-import com.keon.projects.junit.engine.JupiterSkipper;
+import com.keon.projects.junit.engine.CustomRunner;
+import com.keon.projects.junit.engine.client.Resources;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 
-@ExtendWith(JupiterSkipper.class)
+@CustomRunner(resources = {Resources.A, Resources.F, Resources.E})
 public class TwoTest {
 
     @Test

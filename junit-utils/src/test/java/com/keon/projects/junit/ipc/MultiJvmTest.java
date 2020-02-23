@@ -3,7 +3,7 @@ package com.keon.projects.junit.ipc;
 import com.keon.projects.ipc.JvmComm.XJvmFunction;
 import com.keon.projects.ipc.JvmComm.XJvmSupplier;
 import com.keon.projects.ipc.misc.LogManager;
-import com.keon.projects.junit.engine.JupiterSkipper;
+import com.keon.projects.junit.engine.CustomRunner;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -23,7 +23,7 @@ import static com.keon.projects.junit.ipc.JvmAccessor.logger;
 
 @Disabled
 @ExtendWith(JvmAccessor.LifeCycleManager.class)
-@ExtendWith(JupiterSkipper.class)
+@CustomRunner
 public class MultiJvmTest {
 
     @RegisterExtension
