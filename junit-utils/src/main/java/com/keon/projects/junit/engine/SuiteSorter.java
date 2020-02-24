@@ -2,6 +2,7 @@ package com.keon.projects.junit.engine;
 
 import com.keon.projects.junit.engine.ResourceGraph.Resource;
 import com.keon.projects.junit.engine.ResourceGraph.Resource.Builder;
+import com.keon.projects.junit.engine.client.CustomRunner;
 import com.keon.projects.junit.engine.client.Resources;
 
 import java.util.Collection;
@@ -14,7 +15,6 @@ import java.util.stream.Collectors;
 
 import static com.keon.projects.junit.engine.ResourceGraph.totalWeight;
 
-//TODO
 class SuiteSorter {
 
     private final Set<Class<?>> classes;
@@ -40,7 +40,12 @@ class SuiteSorter {
     private static Map<Class<?>, String[]> getResourceMappings(final Collection<Class<?>> classes) {
         final Map<Class<?>, String[]> map = new HashMap<>();
         for (final Class<?> clazz : classes) {
-            final CustomRunner runner = clazz.getDeclaredAnnotationsByType(CustomRunner.class)[0];
+            final CustomRunner[] runners = clazz.getDeclaredAnnotationsByType(CustomRunner.class);
+            if (runners.length == 0)
+                continue;
+            if (runners.length > 1)
+                throw new IllegalStateException(runners.length + " instances of annotation " + CustomRunner.class.getName() + " found on " + clazz.getName() + ". Expected 1.");
+            final CustomRunner runner = runners[0];
             map.put(clazz, runner.resources());
         }
         return map;

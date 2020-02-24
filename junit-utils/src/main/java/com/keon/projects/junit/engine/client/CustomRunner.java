@@ -1,4 +1,4 @@
-package com.keon.projects.junit.engine;
+package com.keon.projects.junit.engine.client;
 
 import org.junit.jupiter.api.extension.ExtendWith;
 
