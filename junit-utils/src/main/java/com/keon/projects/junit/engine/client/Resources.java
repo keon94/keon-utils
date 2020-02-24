@@ -21,7 +21,7 @@ public class Resources {
             else if (C.equals(resource))
                 graph.add(Builder.id(C).weight(1.2f).dependencies(H).build());
             else if (D.equals(resource))
-                graph.add(Builder.id(D).weight(1.0f).dependencies(C).build());
+                graph.add(Builder.id(D).weight(1.0f).dependencies(C, G).build());
             else if (E.equals(resource))
                 graph.add(Builder.id(E).weight(1.3f).dependencies(B, C, D).build());
             else if (F.equals(resource))
