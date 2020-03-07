@@ -3,19 +3,15 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <groupId>com.keon.projects</groupId>
     <artifactId>keon-utils-reactor</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-
     <name>keon-utils-reactor</name>
     <url>http://maven.apache.org</url>
-
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -52,8 +48,7 @@
     </dependencyManagement>
     <modules>
         <module>j-calculator</module>
-        <module>object-differ</module>
-        <module>junit-utils</module>
+        <module>java-utils</module>
     </modules>
     <build>
         <pluginManagement>
