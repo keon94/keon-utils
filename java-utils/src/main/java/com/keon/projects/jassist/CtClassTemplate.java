@@ -17,16 +17,15 @@ import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
-public class CtClassTemplate {
+public class CtClassTemplate implements CtTemplate<CtClassTemplate> {
 
-    private static final ClassPool POOL = ClassPool.getDefault();
-
+    private static final ClassPool POOL = new CustomClassPool();
 
     public static volatile String CLASS_DEBUG_PATH = null;
     private final String name;
     private boolean autoImportDiscovery;
     private String extendsClass;
-    private final List<String> implementsInterfaces = new ArrayList<>();
+    private final Set<String> implementsInterfaces = new HashSet<>();
     private final Set<String> imports = new HashSet<>();
     private final List<CtFieldTemplate> fields = new ArrayList<>();
     private final List<CtMethodTemplate> methods = new ArrayList<>();
@@ -35,16 +34,19 @@ public class CtClassTemplate {
         this.name = name;
     }
 
+    @Override
     public CtClassTemplate autoImportDiscovery(final boolean auto) {
         autoImportDiscovery = auto;
         return this;
     }
 
+    @Override
     public CtClassTemplate addImports(final String... imps) {
         imports.addAll(asList(imps));
         return this;
     }
 
+    @Override
     public CtClassTemplate addImports(final Class<?>... classes) {
         imports.addAll(Arrays.stream(classes).map(Class::getName).collect(Collectors.toSet()));
         return this;
@@ -55,6 +57,7 @@ public class CtClassTemplate {
         return this;
     }
 
+    @Override
     public CtClassTemplate addImplements(final String ifcName) {
         implementsInterfaces.add(ifcName);
         return this;
@@ -72,32 +75,29 @@ public class CtClassTemplate {
         return this;
     }
 
+    @Override
     public Class<?> createClass() throws CannotCompileException {
-        return createClass(POOL, CtClassTemplate.class.getClassLoader());
+        return createClass(CtClassTemplate.class.getClassLoader());
     }
 
-    public Class<?> createClass(final ClassPool pool) throws CannotCompileException {
-        return createClass(pool, CtClassTemplate.class.getClassLoader());
-    }
-
-    public Class<?> createClass(final ClassPool pool, final ClassLoader cl) throws CannotCompileException {
+    private Class<?> createClass(final ClassLoader cl) throws CannotCompileException {
         try {
 
-            final ImportDiscoverer discoverer = autoImportDiscovery ? new ImportDiscovererImpl(pool) : new NoOpImportDiscoverer();
+            final ImportDiscoverer discoverer = autoImportDiscovery ? new ImportDiscovererImpl(CtClassTemplate.POOL) : new NoOpImportDiscoverer();
 
             //explicit imports
             for(final String imp : imports) {
-                pool.importPackage(imp);
+                CtClassTemplate.POOL.importPackage(imp);
             }
 
-            final CtClass ctClass = pool.makeClass(name);
+            final CtClass ctClass = CtClassTemplate.POOL.makeClass(name);
 
             if (extendsClass != null && !extendsClass.isEmpty()) {
-                discoverer.withImportDiscovery(() -> ctClass.setSuperclass(pool.get(extendsClass)));
+                discoverer.withImportDiscovery(() -> ctClass.setSuperclass(CtClassTemplate.POOL.get(extendsClass)));
             }
 
             for (String ifc : implementsInterfaces) {
-                discoverer.withImportDiscovery(() -> ctClass.addInterface(pool.get(ifc)));
+                discoverer.withImportDiscovery(() -> ctClass.addInterface(CtClassTemplate.POOL.get(ifc)));
             }
 
             for (CtFieldTemplate field : fields) {
