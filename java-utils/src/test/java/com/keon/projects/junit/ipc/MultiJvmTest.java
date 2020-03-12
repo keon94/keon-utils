@@ -4,6 +4,7 @@ import com.keon.projects.ipc.JvmComm.XJvmFunction;
 import com.keon.projects.ipc.JvmComm.XJvmSupplier;
 import com.keon.projects.ipc.misc.LogManager;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -58,25 +59,25 @@ public class MultiJvmTest {
         Assertions.assertEquals("Remote2 Done", finished2.get());
     }
 
-    @Test
+    @RepeatedTest(10)
     public void testContention() throws Throwable {
         accessor.start(comm -> {
             comm.put("Start!", true);
-            for (int i = 0; i < 150; ++i) {
+            for (int i = 0; i < 50; ++i) {
                 Thread.sleep(50);
                 comm.put("" + i, i);
             }
             comm.remove("Finished!", 20, TimeUnit.SECONDS);
         }, 5, TimeUnit.SECONDS);
         accessor.comm().remove("Start!", 3, TimeUnit.SECONDS);
-        for (int i = 150; i < 200; ++i) {
+        for (int i = 30; i < 80; ++i) {
             Thread.sleep(50);
             accessor.comm().put("" + i, i);
         }
         accessor.comm().put("Finished!", true);
-        final Set<String> range = IntStream.rangeClosed(0, 199).mapToObj(i -> "" + i).collect(Collectors.toSet());
+        final Set<String> range = IntStream.rangeClosed(0, 79).mapToObj(i -> "" + i).collect(Collectors.toSet());
         final Map<String, Integer> m = accessor.comm().remove(range);
-        Assertions.assertEquals(200, m.size());
+        Assertions.assertEquals(80, m.size());
         for(final Map.Entry<String, Integer> e : m.entrySet()) {
             Assertions.assertEquals(e.getKey(), "" + e.getValue());
         }
