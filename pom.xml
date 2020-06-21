@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.keon.projects</groupId>
     <artifactId>keon-utils-reactor</artifactId>
@@ -50,6 +50,7 @@
     <modules>
         <module>j-calculator</module>
         <module>java-utils</module>
+        <module>duplicate-finder</module>
     </modules>
     <build>
         <pluginManagement>
@@ -59,7 +60,7 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.8.0</version>
                     <configuration>
-                        <release>12</release>
+                        <release>8</release>
                     </configuration>
                 </plugin>
             </plugins>
