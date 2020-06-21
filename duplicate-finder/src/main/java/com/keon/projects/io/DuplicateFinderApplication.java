@@ -13,11 +13,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 class Args {
 
@@ -37,6 +38,16 @@ class Args {
 
     @Parameter(names = "-dir")
     String root = System.getProperty("user.dir");
+
+    @Parameter(names = "-ref")
+    private String reference = null;
+
+    String getReference() {
+        if (reference == null) {
+            reference = root;
+        }
+        return reference;
+    }
 }
 
 public class DuplicateFinderApplication {
@@ -47,28 +58,32 @@ public class DuplicateFinderApplication {
         this.args = args;
     }
 
-    private Map<String, List<Path>> mapFiles() throws IOException {
-        final Path pwd = Paths.get(args.root);
-        final Map<String, List<Path>> filesMap;
+    private Map<String, Set<Path>> mapFiles(final String base, final Map<String, Set<Path>> existing) throws IOException {
+        final Path pwd = Paths.get(base).toAbsolutePath().normalize();
+        final Map<String, Set<Path>> filesMap;
         filesMap = Files.walk(pwd)
                 .filter(Files::isRegularFile)
-                .filter(f -> args.types.stream().anyMatch(t -> f.toString().matches(t)))
+                .filter(p ->
+                        args.types.stream().anyMatch(t -> p.toString().matches(t)) && (existing == null || existing.containsKey(p.getFileName().toString())))
                 .collect(groupingBy(
                         p -> p.toFile().getName(),
-                        () -> new TreeMap<>(Comparator.comparing(f -> f.replaceAll(".*\\.", "") + f)),
-                        mapping(p -> p, toList())));
-        filesMap.entrySet().removeIf(e -> e.getValue().size() < 2);
+                        () -> existing != null ? existing : new TreeMap<>(Comparator.comparing(f -> f.replaceAll(".*\\.", "") + f)),
+                        mapping(p -> p.toAbsolutePath().normalize(), toSet())));
         return filesMap;
     }
 
     private void run() throws IOException {
-        final Map<String, List<Path>> filesMap = mapFiles();
+        Map<String, Set<Path>> filesMap = mapFiles(args.getReference(), null);
+        if (!args.getReference().equals(args.root)) {
+            filesMap = mapFiles(args.root, filesMap);
+        }
+        filesMap.entrySet().removeIf(e -> e.getValue().size() < 2);
         //print
         final int[] count = {1};
         filesMap.forEach((key, value) -> {
             System.out.println(count[0] + ". " + key);
             for (final Path path : value) {
-                System.out.println(spaces(12) + Paths.get(args.root).relativize(path));
+                System.out.println(spaces(12) + Paths.get(args.root).toAbsolutePath().normalize().relativize(path));
             }
             count[0]++;
         });
