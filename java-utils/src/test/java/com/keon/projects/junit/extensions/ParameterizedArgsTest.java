@@ -6,18 +6,22 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import com.keon.projects.junit.annotations.BeforeEachArguments;
 
-public class ParameterizedArgsTest extends ArgumentInterceptor {
+public class ParameterizedArgsTest {
 
     @ParameterizedTest
-    @ArgumentsSource(ParameterizedArgsTest.class)
+    @ArgumentsSource(ArgumentInterceptorImpl.class)
     public void test() {
         return;
     }
 
+}
+
+class ArgumentInterceptorImpl extends ArgumentInterceptor {
+
     @Override
     public Arguments[] provideArguments() {
         return new Arguments[] {
-            Arguments.of(1, true), Arguments.of(2, false)
+                Arguments.of(1, true), Arguments.of(2, false)
         };
     }
     @BeforeEachArguments
