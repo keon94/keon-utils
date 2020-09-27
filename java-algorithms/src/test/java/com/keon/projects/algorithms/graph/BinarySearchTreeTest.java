@@ -2,17 +2,14 @@ package com.keon.projects.algorithms.graph;
 
 import com.google.common.primitives.Ints;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static com.google.common.primitives.Ints.asList;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-@Disabled
 abstract class BinarySearchTreeTest<B extends BinarySearchTree<Integer>> {
 
     protected final BinaryNode<Integer> tree = new BinaryNode<Integer>() {

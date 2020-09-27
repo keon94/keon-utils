@@ -26,9 +26,6 @@ import java.util.Set;
 
 public class CustomDiscoveryEngine extends HierarchicalTestEngine<JupiterEngineExecutionContext> {
 
-    static {
-    }
-
     private final TestEngine engine = new JupiterTestEngine();
 
     @Override

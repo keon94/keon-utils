@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
 @SuppressWarnings("all")
+//Does not work with maven
 public class CtClassTemplateTest {
 
     @Test
@@ -39,11 +40,10 @@ public class CtClassTemplateTest {
         final CtLambdaTemplate<Runnable> template = new CtLambdaTemplate<>(Runnable.class)
                 .autoImportDiscovery(false)
                 .addImports(DummyException.class)
-                .function().body(
-                            "int x = 1;" +
-                            "int y = 2;" +
-                            "System.out.println(x+y);" +
-                            "throw new DummyException();"
+                .function().body("int x = 1;" +
+                        "int y = 2;" +
+                        "System.out.println(x+y);" +
+                        "throw new DummyException();"
                 ).build();
         final Runnable r = template.createClass().newInstance();
         assertThrows(DummyException.class, () -> r.run());

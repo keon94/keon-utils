@@ -6,6 +6,7 @@ import com.keon.projects.ipc.misc.LogManager;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -21,6 +22,7 @@ import java.util.stream.IntStream;
 import static com.keon.projects.ipc.JvmAccessor.logger;
 
 @ExtendWith(JvmAccessor.LifeCycleManager.class)
+@Timeout(7)
 public class MultiJvmTest {
 
     @RegisterExtension
@@ -59,7 +61,7 @@ public class MultiJvmTest {
         Assertions.assertEquals("Remote2 Done", finished2.get());
     }
 
-    @RepeatedTest(10)
+    @RepeatedTest(5)
     public void testContention() throws Throwable {
         accessor.start(comm -> {
             comm.put("Start!", true);
