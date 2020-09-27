@@ -1,8 +1,7 @@
 package com.keon.projects.junit.engine.client;
 
-import com.keon.projects.junit.engine.ResourceGraph;
-import com.keon.projects.junit.engine.ResourceGraph.Resource;
-import com.keon.projects.junit.engine.ResourceGraph.Resource.Builder;
+import com.keon.projects.junit.engine.client.ResourceGraph.Resource;
+import com.keon.projects.junit.engine.client.ResourceGraph.Resource.Builder;
 
 import java.util.Set;
 

@@ -1,33 +1,26 @@
-package com.keon.projects.junit.engine;
+package com.keon.projects.junit.engine.client;
 
-import com.keon.projects.junit.engine.ResourceGraph.Resource;
-import com.keon.projects.junit.engine.ResourceGraph.Resource.Builder;
-import com.keon.projects.junit.engine.client.CustomRunner;
-import com.keon.projects.junit.engine.client.Resources;
+import com.keon.projects.junit.engine.TestSorters.MethodSorter;
+import com.keon.projects.junit.engine.TestSorters.SuiteSorter;
+import com.keon.projects.junit.engine.client.ResourceGraph.Resource;
+import com.keon.projects.junit.engine.client.ResourceGraph.Resource.Builder;
 
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static com.keon.projects.junit.engine.ResourceGraph.totalWeight;
+import static com.keon.projects.junit.engine.client.ResourceGraph.totalWeight;
 
-class SuiteSorter {
+class ResourceSuiteSorter implements SuiteSorter {
 
-    private final Set<Class<?>> classes;
-
-    SuiteSorter(final Collection<Class<?>> classes) {
-        this.classes = sort(classes);
-    }
-
-    Set<Class<?>> getSorted() {
-        return classes;
-    }
-
-    private Set<Class<?>> sort(final Collection<Class<?>> classes) {
+    @Override
+    public Set<Class<?>> sort(final Collection<Class<?>> classes) {
         final Map<Class<?>, String[]> suiteMappings = getResourceMappings(classes);
         final ResourceGraph<Class<?>> graph = new ResourceGraph<>();
         for (final Entry<Class<?>, String[]> e : suiteMappings.entrySet()) {
@@ -49,5 +42,15 @@ class SuiteSorter {
             map.put(clazz, runner.resources());
         }
         return map;
+    }
+}
+
+class MethodSorterImpl implements MethodSorter {
+
+    @Override
+    public Set<Method> sort(Collection<Method> methods) {
+        final Set<Method> set = new TreeSet<>((o1, o2) -> o2.getName().compareTo(o1.getName()));
+        set.addAll(methods);
+        return set;
     }
 }

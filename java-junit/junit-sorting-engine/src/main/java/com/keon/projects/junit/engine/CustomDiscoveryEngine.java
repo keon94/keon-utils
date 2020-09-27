@@ -39,7 +39,12 @@ public class CustomDiscoveryEngine extends HierarchicalTestEngine<JupiterEngineE
     @Override
     public TestDescriptor discover(final EngineDiscoveryRequest discoveryRequest, final UniqueId uniqueId) {
         final TestDescriptor descriptor = engine.discover(discoveryRequest, uniqueId);
-        final DiscoverySelector[] selectors = sortMethods(discoverMethods(descriptor));
+        final DiscoverySelector[] selectors;
+        try {
+            selectors = sortMethods(discoverMethods(descriptor));
+        } catch (final Exception e) {
+            throw new RuntimeException("Exception encountered discovering tests", e);
+        }
         final LauncherDiscoveryRequest modifiedRequest = LauncherDiscoveryRequestBuilder.request()
                 .selectors(selectors)
                 .build();
@@ -65,7 +70,7 @@ public class CustomDiscoveryEngine extends HierarchicalTestEngine<JupiterEngineE
         return methods;
     }
 
-    private static MethodSelector[] sortMethods(final Collection<Method> methods) {
+    private static MethodSelector[] sortMethods(final Collection<Method> methods) throws Exception {
         if (methods.isEmpty()) {
             return new MethodSelector[0];
         }
@@ -78,9 +83,10 @@ public class CustomDiscoveryEngine extends HierarchicalTestEngine<JupiterEngineE
             ms.add(m);
             methodMap.put(m.getDeclaringClass(), ms);
         }
-        final Set<Class<?>> sortedClasses = new SuiteSorter(methodMap.keySet()).getSorted();
+        final TestSorterExecutor sorter = new TestSorterExecutor(methodMap);
+        final Set<Class<?>> sortedClasses = sorter.getSortedClasses();
         final List<Method> sortedMethods = new ArrayList<>();
-        sortedClasses.forEach(c -> sortedMethods.addAll(methodMap.get(c)));
+        sortedClasses.forEach(c -> sortedMethods.addAll(sorter.getSortedMethods(c)));
         return sortedMethods.stream().map(m -> DiscoverySelectors.selectMethod(m.getDeclaringClass(), m)).toArray(MethodSelector[]::new);
     }
 }

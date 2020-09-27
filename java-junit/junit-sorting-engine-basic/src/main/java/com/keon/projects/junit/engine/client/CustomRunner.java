@@ -1,5 +1,6 @@
 package com.keon.projects.junit.engine.client;
 
+import com.keon.projects.junit.engine.JupiterSkipper;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.lang.annotation.Documented;

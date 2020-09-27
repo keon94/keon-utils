@@ -1,4 +1,4 @@
-package com.keon.projects.junit.engine.client;
+package com.keon.projects.junit.engine;
 
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
@@ -6,7 +6,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.engine.descriptor.JupiterEngineDescriptor;
 
 
-class JupiterSkipper implements ExecutionCondition {
+public class JupiterSkipper implements ExecutionCondition {
 
     @Override
     public ConditionEvaluationResult evaluateExecutionCondition(final ExtensionContext context) {
