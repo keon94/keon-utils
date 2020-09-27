@@ -11,14 +11,25 @@
     <url>http://maven.apache.org</url>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.version>5.7.0-M1</junit.version>
+        <junit.version>5.7.0</junit.version>
+        <junit.platform.version>1.7.0</junit.platform.version>
     </properties>
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>28.2-jre</version>
+            </dependency>
+            <dependency>
+                <groupId>org.javassist</groupId>
+                <artifactId>javassist</artifactId>
+                <version>3.26.0-GA</version>
+            </dependency>
+            <dependency>
                 <groupId>net.bytebuddy</groupId>
                 <artifactId>byte-buddy</artifactId>
-                <version>1.10.1</version>
+                <version>1.10.16</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
@@ -38,12 +49,12 @@
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-launcher</artifactId>
-                <version>1.6.0</version>
+                <version>${junit.platform.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-engine</artifactId>
-                <version>1.6.0</version>
+                <version>${junit.platform.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -51,6 +62,9 @@
         <module>j-calculator</module>
         <module>java-utils</module>
         <module>duplicate-finder</module>
+        <module>java-algorithms</module>
+        <module>java-proxy</module>
+        <module>java-junit</module>
     </modules>
     <build>
         <pluginManagement>
