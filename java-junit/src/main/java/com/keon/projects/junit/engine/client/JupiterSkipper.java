@@ -6,7 +6,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.engine.descriptor.JupiterEngineDescriptor;
 
 
-public class JupiterSkipper implements ExecutionCondition {
+class JupiterSkipper implements ExecutionCondition {
 
     @Override
     public ConditionEvaluationResult evaluateExecutionCondition(final ExtensionContext context) {

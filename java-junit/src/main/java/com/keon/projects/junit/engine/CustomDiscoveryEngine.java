@@ -38,7 +38,6 @@ public class CustomDiscoveryEngine extends HierarchicalTestEngine<JupiterEngineE
 
     @Override
     public TestDescriptor discover(final EngineDiscoveryRequest discoveryRequest, final UniqueId uniqueId) {
-        System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         final TestDescriptor descriptor = engine.discover(discoveryRequest, uniqueId);
         final DiscoverySelector[] selectors = sortMethods(discoverMethods(descriptor));
         final LauncherDiscoveryRequest modifiedRequest = LauncherDiscoveryRequestBuilder.request()

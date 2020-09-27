@@ -11,10 +11,12 @@ public class ThreeTest {
     public void test1() {
 
     }
+
     @Test
     public void test2() {
-
+        System.out.println();
     }
+
     @Test
     public void test3() {
 

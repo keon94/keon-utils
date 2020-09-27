@@ -9,6 +9,5 @@ public class OneTest {
 
     @Test
     public void test() {
-        System.out.println("hi");
     }
 }
